@@ -1,0 +1,70 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><title>Validación de Anástasi</title><style>body{font:16px system-ui;max-width:900px;margin:30px auto}#fixture{height:160px;overflow:hidden}.carousel-stage img{width:30px}.carousel-card{display:inline-block}.reflection{display:none}.pass{color:#17662d}.fail{color:#ac1020}</style><h1>Validación del carrusel</h1><p id="summary">Ejecutando…</p><div id="fixture"></div><ol id="results"></ol><script type="module">
+import { CinematicCarousel } from '../Página WEB/js/components/carousel.js';
+const fixture = document.querySelector('#fixture');
+const results = document.querySelector('#results');
+let passes = 0, failures = 0;
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+function check(condition, message) { const li = document.createElement('li'); li.className = condition ? 'pass' : 'fail'; li.textContent = `${condition ? 'OK' : 'ERROR'} · ${message}`; results.append(li); condition ? passes++ : failures++; }
+function create(count, duration = 0) {
+  fixture.innerHTML = '<div class="carousel" tabindex="0"><div class="carousel-stage"></div><div class="carousel-controls"><button data-carousel="previous">Anterior</button><button data-carousel="pause"><span></span></button><button data-carousel="next">Siguiente</button></div><span class="slide-count"></span><span class="slide-title"></span><span class="slide-description"></span><p class="carousel-status"></p></div>';
+  return new CinematicCarousel(fixture.firstElementChild, Array.from({length:count}, (_,i)=>({id:String(i),src:'../Página WEB/assets/images/carousel/demo-01.svg',title:`Imagen ${i}`,alt:`Prueba ${i}`,order:i})),{interval:1500,duration});
+}
+try {
+  for (const count of [0,1,2,3,7]) {
+    const carousel = create(count);
+    check(fixture.querySelectorAll('.carousel-card').length === (count > 1 ? 5 : count), `${count} imágenes: cantidad de elementos acotada`);
+    if (count < 2) check([...fixture.querySelectorAll('.carousel-controls button')].every(button=>button.disabled), `${count} imágenes: controles inactivos`);
+    else {
+      let valid = true;
+      for (let i=0;i<count*3;i++) {
+        carousel.move(1,true);
+        const center = fixture.querySelector('[data-position="0"]');
+        valid &&= center.querySelector('.slide-image').alt === `Prueba ${(i+1)%count}` && !center.inert;
+      }
+      check(valid && carousel.index===0, `${count} imágenes: tres ciclos sin pérdida de contenido`);
+      carousel.move(-1,true);
+      check(fixture.querySelector('[data-position="0"] img').alt===`Prueba ${count-1}`, `${count} imágenes: vuelta inversa`);
+      check([...fixture.querySelectorAll('.carousel-card')].filter(card=>Math.abs(Number(card.dataset.position))>1).every(card=>card.inert), `${count} imágenes: contenido oculto fuera del foco`);
+      fixture.querySelector('[data-carousel="next"]').click();
+      check(carousel.index===0, `${count} imágenes: control siguiente`);
+      carousel.root.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));
+      check(carousel.index===count-1, `${count} imágenes: teclado`);
+      carousel.stage.dispatchEvent(new PointerEvent('pointerdown',{pointerId:1,clientX:200,clientY:50,button:0,isPrimary:true}));
+      window.dispatchEvent(new PointerEvent('pointerup',{pointerId:1,clientX:100,clientY:55}));
+      check(carousel.index===0, `${count} imágenes: gesto horizontal`);
+      carousel.stage.dispatchEvent(new PointerEvent('pointerdown',{pointerId:2,clientX:200,clientY:50,button:0,isPrimary:true}));
+      window.dispatchEvent(new PointerEvent('pointerup',{pointerId:2,clientX:190,clientY:200}));
+      check(carousel.index===0, `${count} imágenes: scroll vertical no cambia foto`);
+    }
+    carousel.destroy();
+    check(!fixture.querySelector('.carousel-card'), `${count} imágenes: limpieza del componente`);
+  }
+  const animated = create(3,180);
+  animated.move(1); animated.move(1);
+  check(animated.index===1,'Transiciones simultáneas bloqueadas');
+  await delay(240);
+  animated.move(1);
+  check(animated.index===2,'Nueva transición disponible al terminar');
+  animated.destroy();
+  const timed = create(3);
+  await delay(1700);
+  check(timed.motion.matches ? timed.index===0 : timed.index===1,'Autoplay respeta preferencia de movimiento del navegador');
+  timed.pauseButton.click();
+  const pausedIndex=timed.index;
+  await delay(1650);
+  check(timed.index===pausedIndex,'Pausa manual detiene el temporizador');
+  timed.pauseButton.click();
+  timed.root.dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}));
+  await delay(1650);
+  check(timed.index===pausedIndex,'Hover detiene el temporizador');
+  timed.root.dispatchEvent(new PointerEvent('pointerleave',{pointerType:'mouse'}));
+  timed.root.focus();
+  await delay(1650);
+  check(timed.index===pausedIndex,'Foco detiene el temporizador');
+  timed.root.blur();
+  await delay(1650);
+  check(timed.motion.matches ? timed.index===pausedIndex : timed.index!==pausedIndex,'Autoplay reanuda al salir del foco');
+  timed.destroy();
+} catch(error) { check(false,error.stack); }
+document.querySelector('#summary').textContent=`${passes} comprobaciones correctas · ${failures} errores`;
+</script></html>
