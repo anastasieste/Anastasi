@@ -1,5 +1,7 @@
 # Anástasi — Plataforma web v1.0
 
+**Sitio publicado:** [anastasieste.github.io/Anastasi](https://anastasieste.github.io/Anastasi/) · Publicación inicial: 1 de noviembre de 2026.
+
 Sitio público de la comunidad de airsoft Anástasi, Puerto Rico. Una primera versión ligera en español con identidad negro/dorado, carrusel cinematográfico y fundamentos PWA. Sin frameworks, dependencias de producción ni servicios de pago.
 
 ## Ejecutar localmente
@@ -121,7 +123,7 @@ Revisa también en dispositivos reales: iPhone/Safari, Android, teclado y movimi
 ## Siguiente fase
 
 1. Incorporar fotografías autorizadas, escuadrones y enlaces sociales oficiales.
-2. Publicar y validar en GitHub Pages y dispositivos reales.
+2. Validar la web publicada en dispositivos reales.
 3. Diseñar registro y aprobación administrativa, perfiles y permisos antes de implementar acceso privado.
 4. Desarrollar el editor multimedia independiente y la integración de contenido aprobado con Drive / Apps Script.
 
