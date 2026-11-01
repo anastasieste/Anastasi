@@ -1,0 +1,7 @@
+dist/
+node_modules/
+.DS_Store
+Thumbs.db
+.qa/
+Página WEB/*.psd
+Página WEB/Ej Pág Inicial.png
