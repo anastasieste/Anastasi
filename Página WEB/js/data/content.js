@@ -7,9 +7,10 @@ export const carouselImages = [
   { id: 'grupal-izquierda', src: groupPhoto, title: 'Nuestra perspectiva', description: 'Encuadre izquierdo · Foto grupal provisional', alt: 'Detalle izquierdo del retrato grupal', framing: 'left', order: 2 },
   { id: 'grupal-derecha', src: groupPhoto, title: 'El siguiente capítulo', description: 'Encuadre derecho · Foto grupal provisional', alt: 'Detalle derecho del retrato grupal', framing: 'right', order: 3 },
 ];
-// Ejemplo de esquema (no representa un escuadrón real):
-// { id, code, name, badge, photo, description, members: [{ callsign }] }
-export const squads = [];
+export const squadCodes = Object.freeze([
+  'ANS098', 'ANSG52', 'ANS2H6', 'ANS0115', 'ANSCBZ', 'ANS456', 'ANSXFW',
+  'ANS141', 'ANS7T7', 'ANS11', 'ANS0Y3', 'ANSRSU', 'ANSDRFE', 'ANSDRN',
+]);
 // Contenido público aprobado únicamente. No agregar información privada aquí.
 // { id, type: 'photo'|'video', src, thumbnail, title, alt, callsign,
 //   squad, publishedAt: '2026-10-30', approved: true }
