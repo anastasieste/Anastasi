@@ -1,0 +1,15 @@
+project_id = "anastasi"
+
+[auth]
+site_url = "https://anastasieste.github.io/Anastasi/"
+minimum_password_length = 9
+password_requirements = "lower_upper_letters_digits_symbols"
+
+[auth.email]
+enable_confirmations = true
+
+[functions.callsign-login]
+verify_jwt = false
+
+[functions.member-mail]
+verify_jwt = false
