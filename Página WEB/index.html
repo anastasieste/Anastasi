@@ -11,9 +11,9 @@
   <link rel="icon" href="assets/images/branding/Chango2.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=1.2">
   <link rel="preload" as="image" href="assets/images/carousel/GrupalPrueba.jpg">
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=1.2"></script>
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -21,7 +21,7 @@
     <a class="brand" href="#inicio" aria-label="Anástasi, inicio"><img src="assets/images/branding/Chango2.png" alt="Emblema del chango de Anástasi" width="52" height="52"><span>ANÁSTASI</span></a>
     <button class="menu-toggle" aria-expanded="false" aria-controls="navegacion" aria-label="Abrir menú"><span></span><span></span></button>
     <nav id="navegacion" aria-label="Navegación principal">
-      <a href="#inicio" aria-current="location">Inicio</a><a href="#nosotros">Nosotros</a><a href="#filosofia">Filosofía</a><a href="#escuadrones">Escuadrones</a><a href="#galeria">Galería</a><button type="button" class="members-link" aria-haspopup="dialog" aria-controls="miembros">Portal Miembros <span aria-hidden="true">↗</span></button>
+      <a href="#inicio" aria-current="location">Inicio</a><a href="#nosotros">Nosotros</a><a href="#filosofia">Filosofía</a><a href="#escuadrones">Escuadrones</a><a href="#galeria">Galería</a><button type="button" class="members-link" aria-haspopup="dialog" aria-controls="miembros">Portal Miembros</button>
     </nav>
   </header>
   <main id="contenido">
@@ -34,7 +34,7 @@
         <div class="carousel-stage"></div>
         <div class="carousel-bottom">
           <div class="slide-caption"><span class="slide-count">01 / 03</span><div><p class="slide-title">El encuentro</p><p class="slide-description">Panorámica · Foto grupal provisional</p></div></div>
-          <div class="carousel-controls"><button data-carousel="previous" aria-label="Fotografía anterior">←</button><button data-carousel="pause" aria-label="Pausar reproducción automática"><span aria-hidden="true">Ⅱ</span></button><button data-carousel="next" aria-label="Fotografía siguiente">→</button></div>
+          <div class="carousel-controls"><button data-carousel="previous" aria-label="Fotografía anterior"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button><button data-carousel="pause" aria-label="Pausar reproducción automática"><span aria-hidden="true">Ⅱ</span></button><button data-carousel="next" aria-label="Fotografía siguiente"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button></div>
         </div>
         <p class="sr-only carousel-status" aria-live="polite" aria-atomic="true"></p>
       </div>
@@ -47,7 +47,7 @@
         <p class="eyebrow">DEL GRIEGO · RESURRECCIÓN</p>
         <h2 id="identity-title">ANÁSTASI</h2>
         <p class="motto">No luchamos por banderas,<br>luchamos por <span>lo que queremos.</span></p>
-        <a class="text-link" href="#nosotros">Esta es nuestra esencia <span aria-hidden="true">↗</span></a>
+        <a class="text-link" href="#nosotros">Esta es nuestra esencia</a>
       </div>
     </section>
     <section id="nosotros" class="section about reveal" aria-labelledby="about-title">
@@ -59,15 +59,49 @@
     </section>
     <section class="manifesto section reveal" aria-label="Nuestro manifiesto"><p class="eyebrow">NUESTRO MANIFIESTO</p><blockquote><p>Hay facciones que siguen órdenes.<br>Hay facciones que siguen ideales.</p><p>Y luego estamos nosotros,<br><span>con nuestras propias reglas.</span></p><p>Y quizás por eso somos<br>difíciles de detener.</p></blockquote></section>
     <section id="filosofia" class="section philosophy reveal" aria-labelledby="philosophy-title"><div class="section-heading"><p class="eyebrow">FILOSOFÍA</p><h2 id="philosophy-title">Lo que nos sostiene.</h2></div><div class="pillars"><article><h3>Autonomía</h3><p>Cada escuadrón desarrolla su propia identidad y organización dentro de la estructura del clan.</p></article><article><h3>Disciplina</h3><p>Desarrollamos continuamente nuestras habilidades y actuamos con responsabilidad, dentro y fuera del campo.</p></article><article><h3>Respeto</h3><p>La ética deportiva, el autocontrol y el respeto hacia otros jugadores son fundamentales.</p></article></div></section>
-    <section id="escuadrones" class="section reveal" aria-labelledby="squads-title"><div class="section-heading section-heading-row"><div><p class="eyebrow">ESCUADRONES</p><h2 id="squads-title">Diferentes identidades.<br>Una misma comunidad.</h2></div><p>El carácter de cada escuadrón.<br>La esencia de Anástasi.</p></div><div id="squad-list" class="squad-list"><div class="empty-state"><div><h3>Un lugar para cada identidad.</h3><p>Pronto conocerás a los escuadrones oficiales de Anástasi.</p></div><span class="status-label">PRÓXIMAMENTE</span></div></div></section>
+    <section id="escuadrones" class="section reveal" aria-labelledby="squads-title"><div class="section-heading section-heading-row"><div><p class="eyebrow">ESCUADRONES</p><h2 id="squads-title">Diferentes identidades.<br>Una misma comunidad.</h2></div><p>El carácter de cada escuadrón.<br>La esencia de Anástasi.</p></div><div id="squad-list" class="squad-list"><div class="empty-state"><div><h3>Un lugar para cada identidad.</h3><p>Aquí aparecerán los escuadrones con miembros aprobados.</p></div></div></div></section>
     <section id="galeria" class="section gallery reveal" aria-labelledby="gallery-title"><div class="section-heading section-heading-row"><div><p class="eyebrow">GALERÍA</p><h2 id="gallery-title">Lo que vivimos.</h2></div><p>El campo. El equipo. Los momentos.</p></div><div class="gallery-filters" role="group" aria-label="Filtrar galería"><button data-filter="all" aria-pressed="true">Todo</button><button data-filter="photo" aria-pressed="false">Fotografías</button><button data-filter="video" aria-pressed="false">Videos</button><span id="gallery-count">0 publicaciones</span></div><div id="gallery-list" class="gallery-list" aria-live="polite"><div class="gallery-empty"><svg width="42" height="42" viewBox="0 0 42 42" fill="none" aria-hidden="true"><rect x="5" y="8" width="32" height="26" rx="2" stroke="currentColor"/><circle cx="15" cy="17" r="3" stroke="currentColor"/><path d="m6 30 10-9 7 6 6-5 8 8" stroke="currentColor"/></svg><h3>Las historias están por llegar.</h3><p>Este será el espacio de nuestras fotografías y videos.<br>El contenido aprobado estará disponible para todos.</p></div></div></section>
   </main>
   <footer class="footer"><div class="footer-inner"><div class="footer-top"><a class="brand" href="#inicio"><img src="assets/images/branding/Chango2.png" alt="Emblema de Anástasi" width="48" height="48" loading="lazy"><span>ANÁSTASI</span></a><p>Comunidad de Airsoft<br>Puerto Rico</p><nav aria-label="Navegación al pie"><a href="#nosotros">Nosotros</a><a href="#escuadrones">Escuadrones</a><a href="#galeria">Galería</a></nav></div><div class="footer-bottom"><span>© <span id="year">2026</span> Anástasi.</span><span>Redes oficiales · Próximamente</span><a href="#inicio">Volver al inicio ↑</a></div></div></footer>
   <dialog id="miembros" class="portal-dialog" aria-labelledby="portal-title">
     <button class="dialog-close" type="button" autofocus>Cerrar <span aria-hidden="true">×</span></button>
-    <p class="eyebrow">PRÓXIMAMENTE</p>
-    <h2 id="portal-title">Portal Miembros</h2>
-    <p>Un espacio para tu perfil, tu escuadrón y tus historias.</p>
+    <p class="eyebrow">ANÁSTASI · ÁREA PRIVADA</p>
+    <div data-portal-panel="login">
+      <h2 id="portal-title" tabindex="-1">Portal Miembros</h2>
+      <form id="login-form" class="account-form" method="post">
+        <label>Correo electrónico o callsign
+          <input name="identifier" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="254">
+        </label>
+        <label>Contraseña
+          <input type="password" name="password" autocomplete="current-password" required maxlength="72">
+        </label>
+        <button type="submit" class="account-submit" disabled>Iniciar sesión</button>
+        <p class="form-message" role="status"></p>
+      </form>
+      <div class="portal-actions">
+        <a href="registro.html">Crear Cuenta</a>
+        <button type="button" data-portal-view="recover">Olvidé mi contraseña</button>
+      </div>
+    </div>
+    <div data-portal-panel="recover" hidden>
+      <h2 id="recovery-title" tabindex="-1">Recuperar contraseña</h2>
+      <p>Escribe el correo que usaste al crear tu cuenta.</p>
+      <form id="recovery-form" class="account-form" method="post">
+        <label>Correo electrónico
+          <input type="email" name="email" autocomplete="email" required maxlength="254">
+        </label>
+        <button type="submit" class="account-submit" disabled>Enviar enlace</button>
+        <p class="form-message" role="status"></p>
+      </form>
+      <div class="portal-actions"><button type="button" data-portal-view="login">Volver a iniciar sesión</button></div>
+    </div>
+    <div data-portal-panel="member" hidden>
+      <h2 id="member-title" tabindex="-1">Tu sesión</h2>
+      <p id="member-greeting"></p>
+      <div class="portal-actions"><a id="admin-link" href="solicitudes.html" hidden>Revisar solicitudes</a></div>
+      <button type="button" class="account-submit" id="sign-out">Cerrar sesión</button>
+    </div>
+    <p class="account-notice" data-account-notice>El servicio de cuentas todavía no está conectado.</p>
   </dialog>
   <dialog id="media-dialog" aria-label="Visor de galería"><button class="dialog-close" aria-label="Cerrar visor">Cerrar ×</button><div class="media-content"></div></dialog>
 </body>

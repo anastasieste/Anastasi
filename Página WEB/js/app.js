@@ -1,9 +1,17 @@
-import { carouselImages, carouselSettings, squads, galleryItems } from './data/content.js';
+import { carouselImages, carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.2';
 import { CinematicCarousel } from './components/carousel.js';
 import { renderSquads, setupGallery } from './components/collections.js';
+import { account, formMessage, initializeAccountForms, submitAccountForm } from './account.js';
 
 new CinematicCarousel(document.querySelector('.carousel'), carouselImages, carouselSettings);
-renderSquads(document.querySelector('#squad-list'), squads);
+account.squadCounts().then(counts => {
+  const squads = squadCodes.flatMap(code => {
+    const count = counts.get(code);
+    if (!Number.isSafeInteger(count) || count < 1) return [];
+    return [{ code, name: code, description: count === 1 ? '1 miembro' : count + ' miembros' }];
+  });
+  renderSquads(document.querySelector('#squad-list'), squads);
+}).catch(() => {});
 setupGallery(galleryItems);
 document.querySelector('#year').textContent = new Date().getFullYear();
 
@@ -30,12 +38,71 @@ desktop.addEventListener('change', () => closeMenu());
 
 const portalButton = nav.querySelector('.members-link');
 const portal = document.querySelector('#miembros');
-portalButton.addEventListener('click', () => {
+const loginForm = portal.querySelector('#login-form');
+const recoveryForm = portal.querySelector('#recovery-form');
+const titles = { login: 'portal-title', recover: 'recovery-title', member: 'member-title' };
+initializeAccountForms(portal);
+
+function showPortalView(view, moveFocus = true) {
+  for (const panel of portal.querySelectorAll('[data-portal-panel]')) {
+    panel.hidden = panel.dataset.portalPanel !== view;
+  }
+  portal.setAttribute('aria-labelledby', titles[view]);
+  if (moveFocus) document.getElementById(titles[view]).focus();
+}
+
+function showMember(profile) {
+  document.querySelector('#member-greeting').textContent = `Sesión iniciada como ${profile.callsign}.`;
+  portal.querySelector('#admin-link').hidden = !profile.is_admin;
+  showPortalView('member');
+}
+
+function openPortal() {
   closeMenu();
+  showPortalView('login', false);
   portal.showModal();
-});
+  account.current().then(profile => {
+    if (profile?.status === 'approved' && portal.open && !loginForm.closest('[hidden]')) showMember(profile);
+  }).catch(() => {});
+}
+
+portalButton.addEventListener('click', openPortal);
 portal.querySelector('.dialog-close').addEventListener('click', () => portal.close());
-portal.addEventListener('close', () => (desktop.matches ? portalButton : toggle).focus());
+portal.addEventListener('close', () => {
+  loginForm.reset();
+  recoveryForm.reset();
+  formMessage(loginForm, '');
+  formMessage(recoveryForm, '');
+  (desktop.matches ? portalButton : toggle).focus();
+});
+for (const button of portal.querySelectorAll('[data-portal-view]')) {
+  button.addEventListener('click', () => showPortalView(button.dataset.portalView));
+}
+loginForm.addEventListener('submit', event => {
+  event.preventDefault();
+  submitAccountForm(loginForm, 'Iniciando sesión…', async ({ identifier, password }) => {
+    const profile = await account.signIn(identifier.trim(), password);
+    loginForm.reset();
+    if (portal.open) showMember(profile);
+  });
+});
+recoveryForm.addEventListener('submit', event => {
+  event.preventDefault();
+  submitAccountForm(recoveryForm, 'Solicitando enlace…', async ({ email }) => {
+    await account.recover(email.trim());
+    recoveryForm.reset();
+    formMessage(recoveryForm, 'Si el correo está asociado a una cuenta, recibirás un enlace para restablecer tu contraseña.');
+  });
+});
+portal.querySelector('#sign-out').addEventListener('click', async () => {
+  try { await account.signOut(); }
+  catch { /* La sesión de esta pestaña ya se eliminó. */ }
+  finally { if (portal.open) showPortalView('login'); }
+});
+if (location.hash === '#portal') {
+  history.replaceState(null, '', location.pathname + location.search);
+  openPortal();
+}
 
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 if ('IntersectionObserver' in window) {
