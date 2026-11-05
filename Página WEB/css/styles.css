@@ -594,3 +594,96 @@ dialog::backdrop { background: #000c; }
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .js-motion .reveal { opacity: 1; transform: none; }
 }
+
+.carousel-controls button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.carousel-controls svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.carousel-controls [data-carousel="previous"] svg { transform: scaleX(-1); }
+
+dialog[open] { animation: dialog-enter .24s var(--ease) both; }
+dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
+[data-portal-panel]:not([hidden]) { animation: dialog-enter .2s var(--ease) both; }
+
+@keyframes dialog-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.account-form { display: grid; gap: 15px; margin-top: 20px; }
+.account-form[hidden] { display: none; }
+.account-form label { display: grid; gap: 7px; font-size: 14px; }
+.account-form small { color: var(--muted); line-height: 1.45; }
+
+.account-form input, .account-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.account-form input:focus, .account-form select:focus { border-color: var(--terracotta-light); }
+
+.account-submit {
+  min-height: 44px;
+  padding: 10px 16px;
+  background: var(--terracotta-dark);
+  border: 1px solid var(--accent-line);
+  font-weight: 700;
+  transition: background .18s, border-color .18s;
+}
+
+.account-submit:not(:disabled):hover { background: var(--terracotta); border-color: var(--terracotta-light); }
+.account-notice { padding: 10px 12px; margin-top: 16px; background: var(--surface); border-left: 2px solid var(--terracotta); font-size: 13px; }
+.form-message { color: var(--text); font-size: 14px; }
+.form-message:empty { margin-top: -15px; }
+.form-message[data-error] { color: var(--terracotta-light); }
+#member-greeting { margin-bottom: 14px; }
+
+.portal-actions { display: flex; justify-content: space-between; gap: 8px 14px; flex-wrap: wrap; margin-top: 8px; }
+.portal-actions a, .portal-actions button, .account-return {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--terracotta-light);
+  font-size: 13px;
+}
+.portal-actions a:hover, .portal-actions button:hover, .account-return:hover { text-decoration: underline; }
+
+.account-page { width: min(100% - 40px, 560px); margin: clamp(28px, 6vw, 84px) auto; }
+.account-card { padding: clamp(18px, 4vw, 40px); border: 1px solid var(--accent-line); background: var(--background); }
+.account-card h1 { margin-block: 10px; font-size: clamp(30px, 7vw, 52px); line-height: 1.04; letter-spacing: -.04em; }
+.account-intro { color: var(--muted); }
+
+.portal-actions [hidden] { display: none; }
+.application-list { display: grid; gap: 14px; margin-top: 24px; }
+.application-card { padding: 16px; border: 1px solid var(--line); background: var(--surface); }
+.application-card p { color: var(--muted); overflow-wrap: anywhere; }
+.application-card button { margin: 12px 8px 0 0; }
