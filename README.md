@@ -88,7 +88,7 @@ El archivo `assets/images/branding/Chango2.png` es una copia exacta del original
 
 ## Escuadrones y galería
 
-El array `squads` permanece vacío hasta disponer de datos oficiales. `galleryItems` contiene la foto grupal provisional. Sus esquemas están documentados en `js/data/content.js`. Añadir objetos crea las tarjetas automáticamente.
+Los códigos oficiales se definen en `squadCodes`. En la web se muestran solo los escuadrones con miembros aprobados. `galleryItems` contiene la foto grupal provisional. Sus esquemas están documentados en `js/data/content.js`. Añadir objetos crea las tarjetas automáticamente.
 
 Para escuadrones utiliza `id`, `code`, `name`, `badge`, `photo`, `description` y `members: [{ callsign }]`. No incluyas datos personales no destinados a publicación.
 
@@ -124,7 +124,7 @@ Revisa también en dispositivos reales: iPhone/Safari, Android, teclado y movimi
 
 1. Incorporar fotografías autorizadas, escuadrones y enlaces sociales oficiales.
 2. Validar la web publicada en dispositivos reales.
-3. Diseñar registro y aprobación administrativa, perfiles y permisos antes de implementar acceso privado.
+3. Conectar y verificar el servicio del Portal Miembros.
 4. Desarrollar el editor multimedia independiente y la integración de contenido aprobado con Drive / Apps Script.
 
-El botón **Portal Miembros** del menú abre un aviso de disponibilidad. No hay autenticación, administración, subida de archivos ni conexión con Drive en esta versión.
+El **Portal Miembros** tiene inicio de sesión, registro, recuperación y revisión administrativa. Para activar las solicitudes y los correos, sigue [la guía de Supabase](supabase/README.md).
