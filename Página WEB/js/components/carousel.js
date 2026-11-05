@@ -46,16 +46,21 @@ export class CinematicCarousel {
       img.height = 900;
       img.draggable = false;
       img.decoding = 'async';
+      const frame = document.createElement('div');
+      frame.className = 'slide-frame';
+      frame.append(img);
       const reflection = document.createElement('div');
       reflection.className = 'reflection';
       reflection.setAttribute('aria-hidden', 'true');
       const reflected = document.createElement('img');
       reflected.alt = '';
       reflected.draggable = false;
-      reflection.append(reflected);
+      const reflectedFrame = frame.cloneNode(false);
+      reflectedFrame.append(reflected);
+      reflection.append(reflectedFrame);
       const button = document.createElement('button');
       button.className = 'slide-select';
-      element.append(img, reflection, button);
+      element.append(frame, reflection, button);
       this.stage.append(element);
       const card = { element, img, reflected, button, position };
       this.cards.push(card);
@@ -71,12 +76,13 @@ export class CinematicCarousel {
 
   fill(card, index) {
     const item = this.images[index];
+    card.element.dataset.framing = item.framing ?? '';
     card.img.src = item.src;
     card.img.alt = item.alt;
     card.img.loading = Math.abs(card.position) < 2 ? 'eager' : 'lazy';
     card.img.fetchPriority = card.position === 0 ? 'high' : 'auto';
     card.img.srcset = item.srcset || '';
-    if (item.srcset) card.img.sizes = '(max-width: 680px) 81vw, 64vw';
+    if (item.srcset) card.img.sizes = '(max-width: 767px) 86vw, min(74vw, 1216px)';
     card.reflected.src = item.src;
     card.element.setAttribute('aria-label', `${index + 1} de ${this.images.length}: ${item.title}`);
     card.button.setAttribute('aria-label', `Ver ${item.title}`);
@@ -149,9 +155,8 @@ export class CinematicCarousel {
     this.on(this.root.querySelector('[data-carousel="previous"]'), 'click', () => this.move(-1, true));
     this.on(this.root.querySelector('[data-carousel="next"]'), 'click', () => this.move(1, true));
     this.on(this.pauseButton, 'click', () => { this.paused = !this.paused; this.schedule(); });
-    this.on(this.root, 'pointerenter', event => { if (event.pointerType === 'mouse') this.setReason('hover', true); });
-    this.on(this.root, 'pointerleave', event => { if (event.pointerType === 'mouse') this.setReason('hover', false); });
-    this.on(this.root, 'focusin', () => this.setReason('focus', true));
+    // El ratón puede permanecer sobre la foto. Solo el foco de teclado pausa la reproducción.
+    this.on(this.root, 'focusin', event => this.setReason('focus', event.target.matches(':focus-visible')));
     this.on(this.root, 'focusout', event => { if (!this.root.contains(event.relatedTarget)) this.setReason('focus', false); });
     this.on(document, 'visibilitychange', () => this.setReason('hidden', document.hidden));
     this.setReason('hidden', document.hidden);
@@ -159,6 +164,7 @@ export class CinematicCarousel {
     this.on(this.root, 'keydown', event => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
+        this.setReason('focus', true);
         this.move(event.key === 'ArrowRight' ? 1 : -1, true);
       }
     });
@@ -179,8 +185,11 @@ export class CinematicCarousel {
       this.setReason('drag', false);
     });
     this.on(window, 'pointercancel', () => { this.drag = null; this.setReason('drag', false); });
-    this.on(window, 'blur', () => { this.drag = null; this.setReason('drag', false); this.setReason('window', true); });
-    this.on(window, 'focus', () => this.setReason('window', false));
+    this.on(window, 'blur', () => {
+      if (!this.drag) return;
+      this.drag = null;
+      this.setReason('drag', false);
+    });
     if ('IntersectionObserver' in window) {
       this.observer = new IntersectionObserver(([entry]) => this.setReason('offscreen', !entry.isIntersecting), { threshold: .1 });
       this.observer.observe(this.root);
