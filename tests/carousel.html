@@ -41,10 +41,10 @@ try {
   }
   const animated = create(3,180);
   animated.move(1); animated.move(1);
-  check(animated.index===1,'Transiciones simultáneas bloqueadas');
+  check(animated.index===(animated.motion.matches ? 2 : 1),'Transiciones simultáneas bloqueadas o instantáneas con movimiento reducido');
   await delay(240);
   animated.move(1);
-  check(animated.index===2,'Nueva transición disponible al terminar');
+  check(animated.index===(animated.motion.matches ? 0 : 2),'Nueva transición disponible al terminar');
   animated.destroy();
   const timed = create(3);
   await delay(1700);
@@ -56,15 +56,29 @@ try {
   timed.pauseButton.click();
   timed.root.dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}));
   await delay(1650);
-  check(timed.index===pausedIndex,'Hover detiene el temporizador');
-  timed.root.dispatchEvent(new PointerEvent('pointerleave',{pointerType:'mouse'}));
+  check(timed.motion.matches ? timed.index===pausedIndex : timed.index!==pausedIndex,'Autoplay continúa con el ratón sobre el carrusel');
+  const focusedIndex=timed.index;
   timed.root.focus();
   await delay(1650);
-  check(timed.index===pausedIndex,'Foco detiene el temporizador');
+  check(timed.index===focusedIndex,'Foco de teclado detiene el temporizador');
   timed.root.blur();
   await delay(1650);
-  check(timed.motion.matches ? timed.index===pausedIndex : timed.index!==pausedIndex,'Autoplay reanuda al salir del foco');
+  check(timed.motion.matches ? timed.index===focusedIndex : timed.index!==focusedIndex,'Autoplay reanuda al salir del foco');
   timed.destroy();
+  const matchMedia = window.matchMedia;
+  const reducedQuery = Object.assign(new EventTarget(), { matches: true });
+  window.matchMedia = query => query === '(prefers-reduced-motion: reduce)' ? reducedQuery : matchMedia.call(window, query);
+  let reduced;
+  try {
+    reduced = create(3, 850);
+    await delay(1650);
+    check(reduced.index === 0 && reduced.pauseButton.disabled, 'El movimiento reducido desactiva el autoplay');
+    reduced.move(1, true);
+    check(reduced.index === 1 && !reduced.busy, 'El movimiento reducido conserva la navegación manual instantánea');
+  } finally {
+    reduced?.destroy();
+    window.matchMedia = matchMedia;
+  }
 } catch(error) { check(false,error.stack); }
 document.querySelector('#summary').textContent=`${passes} comprobaciones correctas · ${failures} errores`;
 </script></html>
