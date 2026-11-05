@@ -1,5 +1,5 @@
 // Aumentar VERSION cada vez que cambien los archivos de la estructura.
-const VERSION = 'anastasi-v1.0.0';
+const VERSION = 'anastasi-v1.1.0';
 const CACHE = `${VERSION}-${self.registration.scope}`;
 const SHELL = [ './', './index.html', './css/styles.css', './js/app.js', './js/data/content.js', './js/components/carousel.js', './js/components/collections.js', './manifest.webmanifest' ];
 const shellURLs = new Set(SHELL.map(path => new URL(path, self.registration.scope).href));

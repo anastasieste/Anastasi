@@ -9,6 +9,7 @@ document.querySelector('#year').textContent = new Date().getFullYear();
 
 const toggle = document.querySelector('.menu-toggle');
 const nav = document.querySelector('#navegacion');
+const desktop = matchMedia('(min-width: 768px)');
 function closeMenu(returnFocus = false) {
   toggle.setAttribute('aria-expanded', 'false');
   toggle.setAttribute('aria-label', 'Abrir menú');
@@ -25,7 +26,16 @@ nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => c
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') closeMenu(true); });
 document.addEventListener('click', event => { if (!event.target.closest('.header')) closeMenu(); });
 document.querySelector('.header').addEventListener('focusout', event => { if (!event.currentTarget.contains(event.relatedTarget)) closeMenu(); });
-matchMedia('(min-width: 681px)').addEventListener('change', () => closeMenu());
+desktop.addEventListener('change', () => closeMenu());
+
+const portalButton = nav.querySelector('.members-link');
+const portal = document.querySelector('#miembros');
+portalButton.addEventListener('click', () => {
+  closeMenu();
+  portal.showModal();
+});
+portal.querySelector('.dialog-close').addEventListener('click', () => portal.close());
+portal.addEventListener('close', () => (desktop.matches ? portalButton : toggle).focus());
 
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 if ('IntersectionObserver' in window) {
@@ -40,7 +50,7 @@ if ('IntersectionObserver' in window) {
     entries.forEach(entry => entry.isIntersecting ? activeSections.add(entry.target.id) : activeSections.delete(entry.target.id));
     const active = links.find(link => activeSections.has(link.hash.slice(1)));
     if (active) links.forEach(link => { if (link === active) link.setAttribute('aria-current', 'location'); else link.removeAttribute('aria-current'); });
-  }, { rootMargin: '-15% 0px -45% 0px' });
+  }, { rootMargin: '-96px 0px 0px' });
   links.forEach(link => sections.observe(document.querySelector(link.hash)));
 }
 motion.addEventListener('change', event => { if (event.matches) document.documentElement.classList.remove('js-motion'); });
