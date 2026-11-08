@@ -1,10 +1,12 @@
 import { accountConfig } from './data/account-config.js';
 
 const { url, publishableKey } = accountConfig;
-const sessionKey = 'anastasi.member.access';
+const sessionKey = 'anastasi.member.session';
+const legacyKey = 'anastasi.member.access';
+const avatarBucket = '/storage/v1/object';
 export const accountsReady = /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) && publishableKey.startsWith('sb_publishable_');
 
-async function request(path, { body, method = body ? 'POST' : 'GET', token } = {}) {
+async function request(path, { body, method = body ? 'POST' : 'GET', token, file, image } = {}) {
   if (!accountsReady) throw new Error('El servicio de cuentas todavía no está conectado.');
   let response;
   try {
@@ -13,23 +15,100 @@ async function request(path, { body, method = body ? 'POST' : 'GET', token } = {
       headers: {
         apikey: publishableKey,
         ...(body && { 'Content-Type': 'application/json' }),
+        ...(file && { 'Content-Type': file.type, 'x-upsert': 'true' }),
         ...(token && { Authorization: 'Bearer ' + token }),
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: file || (body ? JSON.stringify(body) : undefined),
       cache: 'no-store',
       redirect: 'error',
     });
   } catch {
     throw new Error('No se pudo conectar. Intenta de nuevo en unos minutos.');
   }
-  const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     if (response.status === 429) throw new Error('Has hecho varios intentos. Espera un momento y vuelve a intentar.');
     const error = new Error('No se pudo completar la solicitud. Revisa los datos e inténtalo de nuevo.');
     error.status = response.status;
+    error.code = (await response.json().catch(() => ({}))).code;
     throw error;
   }
-  return result;
+  return image ? response.blob() : response.json().catch(() => ({}));
+}
+
+function storedSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem(sessionKey));
+    if (session?.access && session.refresh) return session;
+  } catch { /* Una sesión inválida se trata como cerrada. */ }
+  const access = sessionStorage.getItem(legacyKey);
+  return access ? { access } : null;
+}
+
+function saveSession(credentials) {
+  if (!credentials.access_token || !credentials.refresh_token) {
+    throw new Error('No se recibió una sesión completa. Vuelve a iniciar sesión.');
+  }
+  const session = {
+    access: credentials.access_token,
+    refresh: credentials.refresh_token,
+    expires: credentials.expires_at || (Math.floor(Date.now() / 1000) + Number(credentials.expires_in || 3600)),
+  };
+  localStorage.setItem(sessionKey, JSON.stringify(session));
+  sessionStorage.removeItem(legacyKey);
+  return session;
+}
+
+function clearSession() {
+  localStorage.removeItem(sessionKey);
+  sessionStorage.removeItem(legacyKey);
+}
+
+function sessionLock(callback) {
+  return navigator.locks ? navigator.locks.request(sessionKey, callback) : callback();
+}
+
+let refreshing;
+function activeSession(expiredAccess) {
+  if (refreshing) return refreshing;
+  refreshing = sessionLock(async () => {
+    const session = storedSession();
+    if (!session) return null;
+    const rejected = session.access === expiredAccess;
+    if (!rejected && (!session.refresh || session.expires > Date.now() / 1000 + 45)) return session;
+    if (!session.refresh) { clearSession(); return null; }
+    try {
+      const credentials = await request('/auth/v1/token?grant_type=refresh_token', { body: { refresh_token: session.refresh } });
+      if (storedSession()?.refresh !== session.refresh) return storedSession();
+      return saveSession(credentials);
+    } catch (error) {
+      if (storedSession()?.refresh !== session.refresh) return storedSession();
+      if (![400, 401, 403].includes(error.status)) throw error;
+      clearSession();
+      return null;
+    }
+  }).finally(() => { refreshing = undefined; });
+  return refreshing;
+}
+
+async function memberRequest(path, options) {
+  const session = await activeSession();
+  if (!session) throw new Error('Tu sesión terminó. Vuelve a iniciar sesión.');
+  try { return await request(path, { ...options, token: session.access }); }
+  catch (error) {
+    if (error.status !== 401) throw error;
+    const renewed = await activeSession(session.access);
+    if (!renewed) throw new Error('Tu sesión terminó. Vuelve a iniciar sesión.');
+    return request(path, { ...options, token: renewed.access });
+  }
+}
+
+function rpc(name, body = {}) {
+  return memberRequest('/rest/v1/rpc/' + name, { body });
+}
+
+function avatarPath(id) {
+  if (!/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(id)) throw new Error('Perfil no válido.');
+  return '/member-avatars/' + id + '/avatar';
 }
 
 async function memberProfile(token) {
@@ -51,7 +130,7 @@ export const account = {
       if (profile?.status === 'pending') throw new Error('Tu solicitud está pendiente de revisión. Te avisaremos por correo.');
       if (profile?.status === 'rejected') throw new Error('Tu solicitud de membresía fue rechazada.');
       if (profile?.status !== 'approved') throw new Error('No se pudo validar tu membresía.');
-      sessionStorage.setItem(sessionKey, credentials.access_token);
+      await sessionLock(() => saveSession(credentials));
       return profile;
     } catch (error) {
       if (error.status === 400 || error.status === 401) throw new Error('El correo o callsign y la contraseña no coinciden, o tu correo aún no está confirmado.');
@@ -60,33 +139,43 @@ export const account = {
   },
 
   async current() {
-    const token = sessionStorage.getItem(sessionKey);
-    if (!token) return null;
-    try {
-      return await memberProfile(token);
-    } catch (error) {
-      if (error.status !== 401 && error.status !== 403) throw error;
-      sessionStorage.removeItem(sessionKey);
-      return null;
-    }
+    if (!storedSession()) return null;
+    try { return (await rpc('current_member_profile'))[0] ?? null; }
+    catch (error) { if (storedSession()) throw error; return null; }
   },
 
   async signOut() {
-    const token = sessionStorage.getItem(sessionKey);
-    sessionStorage.removeItem(sessionKey);
-    if (token) await request('/auth/v1/logout?scope=local', { token, method: 'POST' });
+    await activeSession().catch(() => {});
+    await sessionLock(async () => {
+      const token = storedSession()?.access;
+      clearSession();
+      if (token) await request('/auth/v1/logout?scope=local', { token, method: 'POST' });
+    });
   },
 
   recover: email => request('/auth/v1/recover', { body: { email } }),
   verify: (type, token_hash) => request('/auth/v1/verify', { body: { type, token_hash } }),
   updatePassword: (token, password) => request('/auth/v1/user', { token, method: 'PUT', body: { password } }),
 
-  pendingApplications: () => request('/rest/v1/rpc/pending_member_applications', {
-    body: {}, token: sessionStorage.getItem(sessionKey),
+  changePassword: password => memberRequest('/auth/v1/user', { method: 'PUT', body: { password } }),
+  changeEmail: email => memberRequest('/auth/v1/user', { method: 'PUT', body: { email } }),
+  ownProfile: async () => (await rpc('portal_own_profile'))[0],
+  updateProfile: (member_name, bio, details) => rpc('portal_update_profile', { member_name, bio, details }),
+  updatePrivacy: (bio_visible, name_visible, details_visible, activity_visible) =>
+    rpc('portal_update_privacy', { bio_visible, name_visible, details_visible, activity_visible }),
+  directory: (squad_filter = null) => rpc('portal_directory', { squad_filter }),
+  squads: () => rpc('portal_squads'),
+  directoryProfile: async member_id => (await rpc('portal_directory_profile', { member_id }))[0],
+  editMember: (member_id, member_callsign, member_squad) =>
+    rpc('portal_admin_edit_member', { member_id, member_callsign, member_squad }),
+  avatar: id => memberRequest(avatarBucket + '/authenticated' + avatarPath(id), { image: true }),
+  uploadAvatar: (id, file) => memberRequest(avatarBucket + avatarPath(id), { method: 'POST', file }),
+  removeAvatar: id => memberRequest(avatarBucket + '/member-avatars', {
+    method: 'DELETE', body: { prefixes: [avatarPath(id).split('/').slice(2).join('/')] },
   }),
-  decide: (application_id, approved) => request('/rest/v1/rpc/decide_member_application', {
-    body: { application_id, approved }, token: sessionStorage.getItem(sessionKey),
-  }),
+  pendingApplications: () => rpc('pending_member_applications'),
+  applicationHistory: () => rpc('portal_application_history'),
+  decide: (application_id, approved, review_note) => rpc('decide_member_application', { application_id, approved, review_note }),
 
   async squadCounts() {
     if (!accountsReady) return new Map();
@@ -94,6 +183,12 @@ export const account = {
     return new Map(rows.map(row => [row.code, Number(row.member_count)]));
   },
 };
+
+export function watchMemberSession(callback) {
+  window.addEventListener('storage', event => {
+    if (event.key === null || event.key === sessionKey) callback();
+  });
+}
 
 export function initializeAccountForms(root = document) {
   if (!accountsReady) return;
