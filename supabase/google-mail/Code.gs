@@ -16,9 +16,7 @@ function doPost(event) {
     try {
       var sentKey = 'sent:' + message.id;
       if (properties.getProperty(sentKey)) return mailResult_(true);
-      if (MailApp.getRemainingDailyQuota() < 1) return mailResult_(false);
-      MailApp.sendEmail({ to: message.to, subject: message.subject, body: message.text,
-        htmlBody: message.html, name: 'Anástasi' });
+      if (!sendPortalMail_(properties, message)) return mailResult_(false);
       properties.setProperty(sentKey, String(Date.now()));
       pruneMailHistory_(properties);
       return mailResult_(true);
@@ -28,6 +26,36 @@ function doPost(event) {
   } catch (error) {
     return mailResult_(false);
   }
+}
+
+function sendPortalMail_(properties, message) {
+  var apiKey = properties.getProperty('BREVO_API_KEY');
+  if (!apiKey) {
+    if (MailApp.getRemainingDailyQuota() < 1) return false;
+    MailApp.sendEmail({ to: message.to, subject: message.subject, body: message.text,
+      htmlBody: message.html, name: 'Anástasi' });
+    return true;
+  }
+
+  var replyAddress = 'anastasieste@gmail.com';
+  var senderAddress = properties.getProperty('BREVO_SENDER_EMAIL') || replyAddress;
+  var response = UrlFetchApp.fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'api-key': apiKey },
+    followRedirects: false,
+    muteHttpExceptions: true,
+    payload: JSON.stringify({
+      sender: { name: 'Anástasi', email: senderAddress },
+      replyTo: { name: 'Anástasi', email: replyAddress },
+      to: [{ email: message.to }],
+      subject: message.subject,
+      htmlContent: message.html,
+      textContent: message.text
+    })
+  });
+  return response.getResponseCode() === 201
+    && typeof JSON.parse(response.getContentText()).messageId === 'string';
 }
 
 function equalSecret_(expected, actual) {
