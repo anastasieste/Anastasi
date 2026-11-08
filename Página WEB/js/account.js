@@ -3,7 +3,8 @@ import { accountConfig } from './data/account-config.js';
 const { url, publishableKey } = accountConfig;
 const sessionKey = 'anastasi.member.session';
 const legacyKey = 'anastasi.member.access';
-const avatarBucket = '/storage/v1/object';
+const storageObjects = '/storage/v1/object';
+const avatarBucket = '/member-avatars';
 export const accountsReady = /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) && publishableKey.startsWith('sb_publishable_');
 
 async function request(path, { body, method = body ? 'POST' : 'GET', token, file, image } = {}) {
@@ -106,9 +107,9 @@ function rpc(name, body = {}) {
   return memberRequest('/rest/v1/rpc/' + name, { body });
 }
 
-function avatarPath(id) {
+function avatarObject(id) {
   if (!/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(id)) throw new Error('Perfil no válido.');
-  return '/member-avatars/' + id + '/avatar';
+  return id + '/avatar';
 }
 
 async function memberProfile(token) {
@@ -168,10 +169,10 @@ export const account = {
   directoryProfile: async member_id => (await rpc('portal_directory_profile', { member_id }))[0],
   editMember: (member_id, member_callsign, member_squad) =>
     rpc('portal_admin_edit_member', { member_id, member_callsign, member_squad }),
-  avatar: id => memberRequest(avatarBucket + '/authenticated' + avatarPath(id), { image: true }),
-  uploadAvatar: (id, file) => memberRequest(avatarBucket + avatarPath(id), { method: 'POST', file }),
-  removeAvatar: id => memberRequest(avatarBucket + '/member-avatars', {
-    method: 'DELETE', body: { prefixes: [avatarPath(id).split('/').slice(2).join('/')] },
+  avatar: id => memberRequest(storageObjects + '/authenticated' + avatarBucket + '/' + avatarObject(id), { image: true }),
+  uploadAvatar: (id, file) => memberRequest(storageObjects + avatarBucket + '/' + avatarObject(id), { method: 'POST', file }),
+  removeAvatar: id => memberRequest(storageObjects + avatarBucket, {
+    method: 'DELETE', body: { prefixes: [avatarObject(id)] },
   }),
   pendingApplications: () => rpc('pending_member_applications'),
   applicationHistory: () => rpc('portal_application_history'),

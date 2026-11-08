@@ -47,7 +47,11 @@ export function setupApplications(onSignIn) {
 
   dialog.querySelector('.dialog-close').addEventListener('click', dismiss);
   dialog.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
-  dialog.addEventListener('close', () => { if (!dialog.open && opener?.isConnected) opener.focus(); });
+  dialog.addEventListener('close', () => {
+    if (dialog.open || !opener?.isConnected) return;
+    if (getComputedStyle(opener).visibility === 'visible') opener.focus();
+    else document.querySelector('.menu-toggle')?.focus();
+  });
   signIn.addEventListener('click', () => { dismiss(); onSignIn(); });
   history.addEventListener('toggle', () => { if (history.open) loadHistory(); });
 
