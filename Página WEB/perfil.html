@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050505">
+  <meta name="referrer" content="no-referrer">
+  <title>Mi perfil · Anástasi</title>
+  <link rel="icon" href="assets/images/branding/Chango2.png" type="image/png">
+  <link rel="stylesheet" href="css/styles.css?v=1.3">
+  <script type="module" src="js/member-pages.js"></script>
+</head>
+<body data-member-page="profile">
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="header member-header">
+    <a class="brand" href="./" aria-label="Anástasi, inicio"><img src="assets/images/branding/Chango2.png" alt="" width="52" height="52"><span>ANÁSTASI</span></a>
+    <button type="button" class="members-link">Portal Miembros</button>
+  </header>
+  <main id="contenido" class="member-page">
+    <p class="eyebrow">ANÁSTASI · PORTAL MIEMBROS</p>
+    <p class="member-page-status" role="status">Cargando perfil…</p>
+    <a class="account-submit member-page-signin" href="./#portal" hidden>Abrir Portal Miembros</a>
+    <div class="member-private" hidden>
+      <header class="profile-banner">
+        <div class="profile-avatar"></div>
+        <div>
+          <p class="profile-kicker"></p>
+          <h1 class="profile-callsign"></h1>
+          <p class="profile-squad"></p>
+          <p class="profile-bio member-preformatted"></p>
+        </div>
+      </header>
+      <div id="own-profile" class="profile-layout" hidden>
+        <nav class="profile-navigation" aria-label="Secciones de mi perfil">
+          <a href="#general">General</a><a href="#seguridad">Seguridad</a><a href="#privacidad">Privacidad</a><a href="#actividad">Mi actividad</a><a href="#escuadron">Mi escuadrón</a>
+        </nav>
+        <div class="profile-sections">
+          <section id="general" class="member-panel" data-section aria-labelledby="general-title">
+            <h2 id="general-title">General</h2>
+            <dl class="profile-facts">
+              <div><dt>Callsign</dt><dd data-self="callsign"></dd></div>
+              <div><dt>Escuadrón</dt><dd data-self="squad"></dd></div>
+            </dl>
+            <form id="avatar-form" class="account-form" method="post">
+              <label>Foto de perfil
+                <input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" required>
+                <small>JPG, PNG o WebP. Máximo 2 MB.</small>
+              </label>
+              <div class="member-actions">
+                <button type="submit" class="account-submit" disabled>Guardar foto</button>
+                <button type="button" class="dialog-close" data-remove-avatar hidden>Eliminar foto</button>
+              </div>
+              <p class="form-message" role="status"></p>
+            </form>
+            <form id="profile-form" class="account-form" method="post">
+              <label>Nombre y apellido <input name="full_name" autocomplete="name" minlength="3" maxlength="100" required></label>
+              <label>Biografía <textarea name="biography" rows="4" maxlength="500"></textarea></label>
+              <label>Información adicional <textarea name="details" rows="3" maxlength="300"></textarea></label>
+              <button type="submit" class="account-submit" disabled>Guardar perfil</button>
+              <p class="form-message" role="status"></p>
+            </form>
+            <form id="email-form" class="account-form" method="post">
+              <label>Correo electrónico
+                <input name="email" type="email" autocomplete="email" maxlength="254" required>
+                <small>Para cambiarlo, confirma los enlaces que recibas por correo.</small>
+              </label>
+              <button type="submit" class="account-submit" disabled>Solicitar cambio de correo</button>
+              <p class="form-message" role="status"></p>
+            </form>
+          </section>
+          <section id="seguridad" class="member-panel" data-section aria-labelledby="security-title" hidden>
+            <h2 id="security-title">Seguridad</h2>
+            <dl class="profile-facts"><div><dt>Correo de la cuenta</dt><dd data-self="email"></dd></div></dl>
+            <form id="password-form" class="account-form" method="post">
+              <label>Nueva contraseña
+                <input name="password" type="password" autocomplete="new-password" minlength="9" maxlength="72" required>
+                <small>Al menos 9 caracteres, una mayúscula, una minúscula, un número y un símbolo.</small>
+              </label>
+              <label>Confirmar nueva contraseña
+                <input name="confirmation" type="password" autocomplete="new-password" minlength="9" maxlength="72" required>
+              </label>
+              <button type="submit" class="account-submit" disabled>Cambiar contraseña</button>
+              <p class="form-message" role="status"></p>
+            </form>
+          </section>
+          <section id="privacidad" class="member-panel" data-section aria-labelledby="privacy-title" hidden>
+            <h2 id="privacy-title">Privacidad</h2>
+            <p>Tu callsign, foto y escuadrón aparecen en el directorio privado. Tu correo se mantiene privado.</p>
+            <form id="privacy-form" class="account-form privacy-form" method="post">
+              <label><input type="checkbox" name="show_biography"> Mostrar mi biografía</label>
+              <label><input type="checkbox" name="show_full_name"> Mostrar mi nombre real</label>
+              <label><input type="checkbox" name="show_details"> Mostrar mi información adicional</label>
+              <label><input type="checkbox" name="show_activity"> Mostrar mi actividad publicada</label>
+              <button type="submit" class="account-submit" disabled>Guardar privacidad</button>
+              <p class="form-message" role="status"></p>
+            </form>
+          </section>
+          <section id="actividad" class="member-panel" data-section aria-labelledby="activity-title" hidden>
+            <h2 id="activity-title">Mi actividad</h2>
+            <div id="member-activity"></div>
+          </section>
+          <section id="escuadron" class="member-panel" data-section aria-labelledby="squad-title" hidden>
+            <h2 id="squad-title">Mi escuadrón</h2>
+            <p id="squad-status" role="status"></p>
+            <div id="own-squad"></div>
+          </section>
+        </div>
+      </div>
+      <div id="directory-profile" class="directory-profile" hidden>
+        <a class="account-return" href="miembros.html">Volver a Miembros</a>
+        <section class="member-panel" id="shared-details" aria-labelledby="shared-title" hidden>
+          <h2 id="shared-title">Información del perfil</h2>
+          <dl class="profile-facts"></dl>
+        </section>
+        <section class="member-panel" id="shared-activity" aria-labelledby="shared-activity-title" hidden>
+          <h2 id="shared-activity-title">Actividad publicada</h2>
+          <div></div>
+        </section>
+        <section class="member-panel" id="admin-edit" aria-labelledby="admin-edit-title" hidden>
+          <p class="eyebrow">ADMINISTRACIÓN</p>
+          <h2 id="admin-edit-title">Editar identidad de miembro</h2>
+          <form id="admin-edit-form" class="account-form" method="post">
+            <label>Callsign <input name="callsign" required minlength="2" maxlength="32" autocapitalize="none" spellcheck="false"></label>
+            <label>Escuadrón <select name="squad" required></select></label>
+            <button type="submit" class="account-submit" disabled>Guardar cambios administrativos</button>
+            <p class="form-message" role="status"></p>
+          </form>
+        </section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
