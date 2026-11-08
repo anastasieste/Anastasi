@@ -1,7 +1,8 @@
 import { carouselImages, carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.2';
 import { CinematicCarousel } from './components/carousel.js';
 import { renderSquads, setupGallery } from './components/collections.js';
-import { account, formMessage, initializeAccountForms, submitAccountForm } from './account.js';
+import { account, formMessage, initializeAccountForms, submitAccountForm, watchMemberSession } from './account.js';
+import { setupMemberMenu } from './member-menu.js';
 
 new CinematicCarousel(document.querySelector('.carousel'), carouselImages, carouselSettings);
 account.squadCounts().then(counts => {
@@ -40,7 +41,14 @@ const portalButton = nav.querySelector('.members-link');
 const portal = document.querySelector('#miembros');
 const loginForm = portal.querySelector('#login-form');
 const recoveryForm = portal.querySelector('#recovery-form');
-const titles = { login: 'portal-title', recover: 'recovery-title', member: 'member-title' };
+const titles = { login: 'portal-title', recover: 'recovery-title' };
+const menu = setupMemberMenu(portalButton, {
+  onSignIn: openPortal,
+  onSignOut: () => { if (portal.open) portal.close(); },
+  loginDialog: true,
+});
+let reviewAfterSignIn = false;
+let memberVersion = 0;
 initializeAccountForms(portal);
 
 function showPortalView(view, moveFocus = true) {
@@ -51,29 +59,22 @@ function showPortalView(view, moveFocus = true) {
   if (moveFocus) document.getElementById(titles[view]).focus();
 }
 
-function showMember(profile) {
-  document.querySelector('#member-greeting').textContent = `Sesión iniciada como ${profile.callsign}.`;
-  portal.querySelector('#admin-link').hidden = !profile.is_admin;
-  showPortalView('member');
-}
-
-function openPortal() {
+function openPortal(review = false) {
   closeMenu();
+  reviewAfterSignIn = review;
   showPortalView('login', false);
-  portal.showModal();
-  account.current().then(profile => {
-    if (profile?.status === 'approved' && portal.open && !loginForm.closest('[hidden]')) showMember(profile);
-  }).catch(() => {});
+  if (!portal.open) portal.showModal();
+  if (review) formMessage(loginForm, 'Inicia sesión con una cuenta de administrador para revisar solicitudes.');
 }
 
-portalButton.addEventListener('click', openPortal);
 portal.querySelector('.dialog-close').addEventListener('click', () => portal.close());
 portal.addEventListener('close', () => {
+  if (portal.open) return;
   loginForm.reset();
   recoveryForm.reset();
   formMessage(loginForm, '');
   formMessage(recoveryForm, '');
-  (desktop.matches ? portalButton : toggle).focus();
+  if (!document.querySelector('.applications-dialog[open]')) (desktop.matches ? portalButton : toggle).focus();
 });
 for (const button of portal.querySelectorAll('[data-portal-view]')) {
   button.addEventListener('click', () => showPortalView(button.dataset.portalView));
@@ -82,8 +83,13 @@ loginForm.addEventListener('submit', event => {
   event.preventDefault();
   submitAccountForm(loginForm, 'Iniciando sesión…', async ({ identifier, password }) => {
     const profile = await account.signIn(identifier.trim(), password);
+    memberVersion++;
+    const openReview = reviewAfterSignIn;
     loginForm.reset();
-    if (portal.open) showMember(profile);
+    menu.update(profile);
+    if (portal.open) portal.close();
+    if (openReview) menu.openApplications();
+    else if (!desktop.matches) toggle.click();
   });
 });
 recoveryForm.addEventListener('submit', event => {
@@ -94,15 +100,30 @@ recoveryForm.addEventListener('submit', event => {
     formMessage(recoveryForm, 'Si el correo está asociado a una cuenta, recibirás un enlace para restablecer tu contraseña.');
   });
 });
-portal.querySelector('#sign-out').addEventListener('click', async () => {
-  try { await account.signOut(); }
-  catch { /* La sesión de esta pestaña ya se eliminó. */ }
-  finally { if (portal.open) showPortalView('login'); }
-});
-if (location.hash === '#portal') {
-  history.replaceState(null, '', location.pathname + location.search);
-  openPortal();
+async function syncMember() {
+  const version = ++memberVersion;
+  let profile;
+  try { profile = await account.current(); }
+  catch { /* Los controles públicos siguen disponibles si Auth no responde. */ }
+  if (version === memberVersion) menu.update(profile);
+  return profile;
 }
+
+async function handlePortalRoute() {
+  const hash = location.hash;
+  if (hash !== '#portal' && hash !== '#solicitudes') return;
+  history.replaceState(null, '', location.pathname + location.search);
+  const profile = await syncMember();
+  if (hash === '#solicitudes') await menu.openApplications();
+  else if (!profile || profile.status !== 'approved') openPortal();
+  else if (!desktop.matches && toggle.getAttribute('aria-expanded') !== 'true') toggle.click();
+}
+
+if (location.hash === '#portal' || location.hash === '#solicitudes') handlePortalRoute();
+else syncMember();
+window.addEventListener('hashchange', handlePortalRoute);
+watchMemberSession(syncMember);
+window.addEventListener('pageshow', event => { if (event.persisted) syncMember(); });
 
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 if ('IntersectionObserver' in window) {
@@ -111,7 +132,7 @@ if ('IntersectionObserver' in window) {
     if (entry.isIntersecting) { entry.target.classList.add('is-visible'); reveal.unobserve(entry.target); }
   }), { threshold: .08 });
   document.querySelectorAll('.reveal').forEach(element => reveal.observe(element));
-  const links = [...nav.querySelectorAll('a')];
+  const links = [...nav.querySelectorAll('a[href^="#"]')];
   const activeSections = new Set();
   const sections = new IntersectionObserver(entries => {
     entries.forEach(entry => entry.isIntersecting ? activeSections.add(entry.target.id) : activeSections.delete(entry.target.id));

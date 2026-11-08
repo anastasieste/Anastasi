@@ -74,3 +74,25 @@ if (reset) {
     });
   });
 }
+
+const emailChange = document.querySelector('#email-change-confirmation');
+if (emailChange) {
+  const token = fragment.get('cambio');
+  const submit = emailChange.querySelector('button[type="submit"]');
+  if (!token) {
+    submit.disabled = true;
+    formMessage(emailChange, 'Abre el enlace que recibiste por correo.', true);
+  }
+  emailChange.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!token || submit.hidden) return;
+    submitAccountForm(emailChange, 'Confirmando el cambio…', async () => {
+      const result = await account.verify('email_change', token);
+      history.replaceState(null, '', location.pathname);
+      submit.hidden = true;
+      formMessage(emailChange, result.access_token
+        ? 'Tu correo se actualizó. Puedes consultarlo en Mi perfil.'
+        : 'Confirmación registrada. Si queda otro enlace por confirmar, ábrelo desde el otro buzón.');
+    });
+  });
+}

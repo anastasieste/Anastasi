@@ -52,8 +52,8 @@ Deno.serve(async request => {
     });
     if (auth.status === 429) return reply(429);
     if (!auth.ok || !match.email) return reply(auth.status >= 500 ? 503 : 401);
-    const { access_token } = await auth.json();
-    return access_token ? reply(200, { access_token }) : reply(503);
+    const { access_token, refresh_token, expires_at, expires_in } = await auth.json();
+    return access_token && refresh_token ? reply(200, { access_token, refresh_token, expires_at, expires_in }) : reply(503);
   } catch {
     return reply(503);
   }
