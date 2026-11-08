@@ -62,6 +62,13 @@ const authenticationMessages = {
     action: 'Restablecer contraseña',
     route: 'restablecer.html#recuperacion=',
   },
+  email_change: {
+    subject: 'Anástasi · Confirma el cambio de correo',
+    title: 'Confirma el cambio de correo',
+    copy: 'Confirma el cambio que pediste en el Portal Miembros. Si recibiste un enlace en ambas direcciones, confirma los dos para completar el cambio.',
+    action: 'Confirmar cambio',
+    route: 'correo.html#cambio=',
+  },
 };
 
 async function sendMail(id, recipient, message) {
@@ -102,12 +109,22 @@ async function sendAuthMail(request) {
   const { user, email_data } = JSON.parse(payload);
   const message = Object.hasOwn(authenticationMessages, email_data?.email_action_type)
     ? authenticationMessages[email_data.email_action_type] : null;
-  const token = email_data?.token_hash;
-  if (!message || typeof user?.email !== 'string' || typeof token !== 'string'
-      || !/^[A-Za-z0-9_-]{32,128}$/.test(token)) return new Response(null, { status: 400 });
-  const delivered = await sendMail('auth-' + request.headers.get('webhook-id'), user.email,
-    { ...message, href: site + message.route + encodeURIComponent(token) });
-  return delivered ? Response.json({}) : new Response(null, { status: 503 });
+  if (!message || !user) return new Response(null, { status: 400 });
+  const id = 'auth-' + request.headers.get('webhook-id');
+  const targets = email_data.email_action_type === 'email_change'
+    ? [{ id: id + '-new', address: user.new_email, token: email_data.token_hash }]
+    : [{ id, address: user.email, token: email_data.token_hash }];
+  // Supabase coloca el hash de la dirección actual en token_hash_new.
+  if (email_data.email_action_type === 'email_change' && email_data.token_hash_new) {
+    targets.push({ id: id + '-current', address: user.email, token: email_data.token_hash_new });
+  }
+  if (targets.some(({ address, token }) => typeof address !== 'string' || !address.includes('@')
+    || typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(token))) {
+    return new Response(null, { status: 400 });
+  }
+  const delivered = await Promise.all(targets.map(target => sendMail(target.id, target.address,
+    { ...message, href: site + message.route + encodeURIComponent(target.token) })));
+  return delivered.every(Boolean) ? Response.json({}) : new Response(null, { status: 503 });
 }
 
 Deno.serve(async request => {
