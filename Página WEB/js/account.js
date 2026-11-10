@@ -30,7 +30,8 @@ async function request(path, { body, method = body ? 'POST' : 'GET', token, file
     if (response.status === 429) throw new Error('Has hecho varios intentos. Espera un momento y vuelve a intentar.');
     const error = new Error('No se pudo completar la solicitud. Revisa los datos e inténtalo de nuevo.');
     error.status = response.status;
-    error.code = (await response.json().catch(() => ({}))).code;
+    const failure = await response.json().catch(() => ({}));
+    error.code = failure.code || failure.error_code;
     throw error;
   }
   return image ? response.blob() : response.json().catch(() => ({}));
@@ -130,10 +131,12 @@ export const account = {
       const profile = await memberProfile(credentials.access_token);
       if (profile?.status === 'pending') throw new Error('Tu solicitud está pendiente de revisión. Te avisaremos por correo.');
       if (profile?.status === 'rejected') throw new Error('Tu solicitud de membresía fue rechazada.');
+      if (profile?.status === 'suspended') throw new Error('Tu cuenta está suspendida. Comunícate con la administración.');
       if (profile?.status !== 'approved') throw new Error('No se pudo validar tu membresía.');
       await sessionLock(() => saveSession(credentials));
       return profile;
     } catch (error) {
+      if (error.code === 'user_banned') throw new Error('Tu cuenta está suspendida. Comunícate con la administración.');
       if (error.status === 400 || error.status === 401) throw new Error('El correo o callsign y la contraseña no coinciden, o tu correo aún no está confirmado.');
       throw error;
     }
@@ -176,6 +179,8 @@ export const account = {
   }),
   pendingApplications: () => rpc('pending_member_applications'),
   applicationHistory: () => rpc('portal_application_history'),
+  managementSheet: action => memberRequest('/functions/v1/member-management', { body: { action } }),
+  manageAccounts: changes => rpc('portal_manage_accounts', { changes }),
   decide: (application_id, approved, review_note) => rpc('decide_member_application', { application_id, approved, review_note }),
 
   async squadCounts() {

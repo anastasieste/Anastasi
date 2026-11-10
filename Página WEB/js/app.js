@@ -3,6 +3,7 @@ import { CinematicCarousel } from './components/carousel.js';
 import { renderSquads, setupGallery } from './components/collections.js';
 import { account, formMessage, initializeAccountForms, submitAccountForm, watchMemberSession } from './account.js';
 import { setupMemberMenu } from './member-menu.js';
+import { setupSiteNavigation } from './site-navigation.js';
 
 new CinematicCarousel(document.querySelector('.carousel'), carouselImages, carouselSettings);
 account.squadCounts().then(counts => {
@@ -16,26 +17,7 @@ account.squadCounts().then(counts => {
 setupGallery(galleryItems);
 document.querySelector('#year').textContent = new Date().getFullYear();
 
-const toggle = document.querySelector('.menu-toggle');
-const nav = document.querySelector('#navegacion');
-const desktop = matchMedia('(min-width: 768px)');
-function closeMenu(returnFocus = false) {
-  toggle.setAttribute('aria-expanded', 'false');
-  toggle.setAttribute('aria-label', 'Abrir menú');
-  nav.classList.remove('is-open');
-  if (returnFocus) toggle.focus();
-}
-toggle.addEventListener('click', () => {
-  const open = toggle.getAttribute('aria-expanded') !== 'true';
-  toggle.setAttribute('aria-expanded', String(open));
-  toggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
-  nav.classList.toggle('is-open', open);
-});
-nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => closeMenu()));
-document.addEventListener('keydown', event => { if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') closeMenu(true); });
-document.addEventListener('click', event => { if (!event.target.closest('.header')) closeMenu(); });
-document.querySelector('.header').addEventListener('focusout', event => { if (!event.currentTarget.contains(event.relatedTarget)) closeMenu(); });
-desktop.addEventListener('change', () => closeMenu());
+const { nav, toggle, desktop, closeMenu } = setupSiteNavigation(document.querySelector('.header'));
 
 const portalButton = nav.querySelector('.members-link');
 const portal = document.querySelector('#miembros');
@@ -48,6 +30,7 @@ const menu = setupMemberMenu(portalButton, {
   loginDialog: true,
 });
 let reviewAfterSignIn = false;
+let managementAfterSignIn = false;
 let memberVersion = 0;
 initializeAccountForms(portal);
 
@@ -59,12 +42,14 @@ function showPortalView(view, moveFocus = true) {
   if (moveFocus) document.getElementById(titles[view]).focus();
 }
 
-function openPortal(review = false) {
+function openPortal(review = false, management = false) {
   closeMenu();
   reviewAfterSignIn = review;
+  managementAfterSignIn = management;
   showPortalView('login', false);
   if (!portal.open) portal.showModal();
   if (review) formMessage(loginForm, 'Inicia sesión con una cuenta de administrador para revisar solicitudes.');
+  if (management) formMessage(loginForm, 'Inicia sesión con una cuenta de administrador para gestionar miembros.');
 }
 
 portal.querySelector('.dialog-close').addEventListener('click', () => portal.close());
@@ -88,7 +73,8 @@ loginForm.addEventListener('submit', event => {
     loginForm.reset();
     menu.update(profile);
     if (portal.open) portal.close();
-    if (openReview) menu.openApplications();
+    if (managementAfterSignIn) location.href = 'gestion.html';
+    else if (openReview) menu.openApplications();
     else if (!desktop.matches) toggle.click();
   });
 });
@@ -111,15 +97,19 @@ async function syncMember() {
 
 async function handlePortalRoute() {
   const hash = location.hash;
-  if (hash !== '#portal' && hash !== '#solicitudes') return;
+  if (!['#portal', '#solicitudes', '#gestion'].includes(hash)) return;
   history.replaceState(null, '', location.pathname + location.search);
   const profile = await syncMember();
   if (hash === '#solicitudes') await menu.openApplications();
+  else if (hash === '#gestion') {
+    if (profile?.status === 'approved') location.href = 'gestion.html';
+    else openPortal(false, true);
+  }
   else if (!profile || profile.status !== 'approved') openPortal();
   else if (!desktop.matches && toggle.getAttribute('aria-expanded') !== 'true') toggle.click();
 }
 
-if (location.hash === '#portal' || location.hash === '#solicitudes') handlePortalRoute();
+if (['#portal', '#solicitudes', '#gestion'].includes(location.hash)) handlePortalRoute();
 else syncMember();
 window.addEventListener('hashchange', handlePortalRoute);
 watchMemberSession(syncMember);

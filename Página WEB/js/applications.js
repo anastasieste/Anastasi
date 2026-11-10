@@ -100,19 +100,20 @@ export function setupApplications(onSignIn) {
       <label>Nota administrativa <textarea name="note" maxlength="1000" rows="3"></textarea>
         <small>Opcional. Solo la pueden consultar administradores.</small>
       </label>
-      <div class="member-actions">
+      <div class="member-actions" data-decision-actions>
         <button type="button" class="account-submit" data-decision="approve">Aceptar</button>
         <button type="button" class="dialog-close" data-decision="reject">Rechazar</button>
       </div>
       <div class="application-confirm" hidden>
         <p></p>
-        <div class="member-actions">
-          <button type="submit" class="account-submit">Confirmar decisión</button>
+        <div class="confirmation-actions">
+          <button type="submit" class="account-submit">Confirmar</button>
           <button type="button" class="dialog-close" data-cancel>Cancelar</button>
         </div>
       </div>`;
     form.querySelector('.application-email').textContent = 'Correo: ' + application.email;
     const confirmation = form.querySelector('.application-confirm');
+    const actions = form.querySelector('[data-decision-actions]');
     const controls = [...form.querySelectorAll('button, textarea')];
     let decision;
     let actionButton;
@@ -124,11 +125,13 @@ export function setupApplications(onSignIn) {
           ? '¿Aceptar la solicitud de ' + application.callsign + '?'
           : '¿Rechazar la solicitud de ' + application.callsign + '?';
         confirmation.hidden = false;
+        actions.hidden = true;
         confirmation.querySelector('[data-cancel]').focus();
       });
     }
     form.querySelector('[data-cancel]').addEventListener('click', () => {
       confirmation.hidden = true;
+      actions.hidden = false;
       decision = undefined;
       actionButton.focus();
     });
