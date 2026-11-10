@@ -1,11 +1,13 @@
 import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, watchMemberSession } from './account.js';
 import { setupMemberMenu } from './member-menu.js';
+import { setupSiteNavigation } from './site-navigation.js';
 import { galleryItems } from './data/content.js?v=1.2';
 
 const page = document.body.dataset.memberPage;
 const status = document.querySelector('.member-page-status');
 const protectedContent = document.querySelector('.member-private');
 const signInLink = document.querySelector('.member-page-signin');
+setupSiteNavigation(document.querySelector('.header'));
 const menu = setupMemberMenu(document.querySelector('.members-link'), {
   onSignIn: review => { location.href = review ? './#solicitudes' : './#portal'; },
   onSignOut: () => { location.replace('./'); },

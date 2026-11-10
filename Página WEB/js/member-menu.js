@@ -18,6 +18,7 @@ export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = fal
     <a href="editor.html">Editor</a>
     <a href="miembros.html">Miembros</a>
     <button type="button" data-admin hidden>Revisar solicitudes</button>
+    <a href="gestion.html" data-admin hidden>Gestión de miembros</a>
     <button type="button" class="member-signout">Cerrar sesión</button>`;
   root.append(options);
   const review = options.querySelector('[data-admin]');
@@ -37,7 +38,7 @@ export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = fal
     profile = current;
     label.textContent = profile ? 'Hola, ' + profile.callsign : 'Portal Miembros';
     chevron.hidden = !profile;
-    review.hidden = !profile?.is_admin;
+    for (const option of options.querySelectorAll('[data-admin]')) option.hidden = !profile?.is_admin;
     if (profile) {
       button.setAttribute('aria-controls', options.id);
       button.setAttribute('aria-expanded', String(!options.hidden));
