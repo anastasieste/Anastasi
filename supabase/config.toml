@@ -13,3 +13,6 @@ verify_jwt = false
 
 [functions.member-mail]
 verify_jwt = false
+
+[functions.member-management]
+verify_jwt = false
