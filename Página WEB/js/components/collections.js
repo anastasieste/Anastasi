@@ -18,7 +18,7 @@ export function renderSquads(root, squads) {
       img.loading = 'lazy';
       card.append(img);
     }
-    card.append(node('span', squad.code, 'eyebrow'), node('h3', squad.name), node('p', squad.description));
+    card.append(node('h3', squad.name || squad.code), node('p', squad.description));
     if (squad.members?.length) card.append(node('p', squad.members.map(member => member.callsign).join(' · ')));
     root.append(card);
   }

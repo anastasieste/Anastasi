@@ -1,5 +1,4 @@
 import { account } from './account.js';
-import { setupApplications } from './applications.js';
 
 export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = false }) {
   const root = document.createElement('div');
@@ -17,13 +16,11 @@ export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = fal
     <a href="perfil.html">Mi perfil</a>
     <a href="editor.html">Editor</a>
     <a href="miembros.html">Miembros</a>
-    <button type="button" data-admin hidden>Revisar solicitudes</button>
-    <a href="gestion.html" data-admin hidden>Gestión de miembros</a>
+    <a href="gestion.html" data-admin hidden>Panel Admin</a>
     <button type="button" class="member-signout">Cerrar sesión</button>`;
   root.append(options);
-  const review = options.querySelector('[data-admin]');
+  const admin = options.querySelector('[data-admin]');
   const logout = options.querySelector('.member-signout');
-  const applications = setupApplications(() => onSignIn(true));
   let profile = null;
 
   function close() {
@@ -33,12 +30,11 @@ export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = fal
 
   function update(next) {
     const current = next?.status === 'approved' ? next : null;
-    if (!current?.is_admin) applications.dismiss();
     if (profile?.callsign !== current?.callsign || profile?.is_admin !== current?.is_admin) close();
     profile = current;
     label.textContent = profile ? 'Hola, ' + profile.callsign : 'Portal Miembros';
     chevron.hidden = !profile;
-    for (const option of options.querySelectorAll('[data-admin]')) option.hidden = !profile?.is_admin;
+    admin.hidden = !profile?.is_admin;
     if (profile) {
       button.setAttribute('aria-controls', options.id);
       button.setAttribute('aria-expanded', String(!options.hidden));
@@ -55,7 +51,7 @@ export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = fal
   }
 
   button.addEventListener('click', () => {
-    if (!profile) { onSignIn(false); return; }
+    if (!profile) { onSignIn(); return; }
     if (!options.hidden) { close(); return; }
     options.hidden = false;
     button.setAttribute('aria-expanded', 'true');
@@ -72,7 +68,6 @@ export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = fal
     button.focus();
   });
   options.addEventListener('click', () => close());
-  review.addEventListener('click', () => applications.open(profile, button));
   logout.addEventListener('click', async () => {
     logout.disabled = true;
     try { await account.signOut(); }
@@ -86,5 +81,5 @@ export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = fal
   });
 
   update(null);
-  return { update, close, openApplications: () => applications.open(profile, button) };
+  return { update };
 }

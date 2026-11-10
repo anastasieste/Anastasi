@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#050505">
   <meta name="referrer" content="no-referrer">
-  <title>Gestión de miembros · Anástasi</title>
+  <title>Panel Admin · Anástasi</title>
   <link rel="icon" href="assets/images/branding/Chango2.png" type="image/png">
-  <link rel="stylesheet" href="css/styles.css?v=1.4">
+  <link rel="stylesheet" href="css/styles.css?v=1.5">
   <script type="module" src="js/management.js"></script>
 </head>
 <body>
@@ -18,23 +18,34 @@
   </header>
   <main id="contenido" class="member-page">
     <p class="eyebrow">ANÁSTASI · ADMINISTRACIÓN</p>
-    <h1>Gestión de miembros</h1>
+    <h1>Panel Admin</h1>
     <p id="management-status" role="status">Comprobando sesión…</p>
     <a class="account-submit member-page-signin" href="./#gestion" id="management-signin" hidden>Abrir Portal Miembros</a>
-    <div class="member-panel" id="management-controls" hidden>
-      <p>Prepara los cambios en la hoja privada, marca <strong>Aplicar</strong> en las filas correspondientes y vuelve aquí para revisarlos.</p>
-      <div class="member-actions management-actions">
-        <a class="account-submit member-page-signin" id="management-sheet" target="_blank" rel="noopener" hidden>Abrir Google Sheets</a>
-        <button type="button" class="dialog-close" id="management-sync">Actualizar hoja</button>
-        <button type="button" class="account-submit" id="management-preview">Revisar cambios</button>
-      </div>
-      <section class="member-panel management-review" id="management-review" aria-labelledby="management-review-title" hidden>
-        <h2 id="management-review-title">Cambios por aplicar</h2>
-        <ul id="management-changes"></ul>
-        <div class="confirmation-actions">
-          <button type="button" class="account-submit" id="management-apply">Aplicar cambios</button>
-          <button type="button" class="dialog-close" id="management-cancel">Cancelar</button>
+    <div class="admin-layout" id="management-controls" hidden>
+      <section class="member-panel" id="solicitudes" aria-labelledby="applications-title">
+        <div class="admin-section-heading">
+          <h2 id="applications-title">Solicitudes</h2>
+          <div class="admin-views" role="group" aria-label="Ver solicitudes">
+            <button type="button" data-application-view="pending" aria-pressed="true" aria-controls="applications-pending">Pendientes</button>
+            <button type="button" data-application-view="history" aria-pressed="false" aria-controls="applications-history">Historial</button>
+          </div>
         </div>
+        <div id="applications-pending">
+          <p class="application-message" role="status"></p>
+          <div class="application-list"></div>
+        </div>
+        <div id="applications-history" hidden>
+          <p class="history-status" role="status"></p>
+          <div class="history-list"></div>
+        </div>
+      </section>
+      <section class="member-panel" aria-labelledby="management-title">
+        <div class="admin-section-heading">
+          <h2 id="management-title">Gestión de miembros</h2>
+          <label class="admin-filter">Buscar miembro <input type="search" id="management-filter" placeholder="Callsign o nombre"></label>
+        </div>
+        <p id="management-members-status" role="status"></p>
+        <div id="management-members" class="admin-member-list"></div>
       </section>
     </div>
   </main>

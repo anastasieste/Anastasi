@@ -460,7 +460,8 @@ button:disabled { cursor: default; opacity: .4; }
 .media-card p:not(:empty) { margin: 0 18px 16px; color: var(--muted); font-size: 13px; }
 .squad-card { padding: 22px; }
 .squad-card img { width: auto; max-height: 190px; object-fit: contain; }
-.squad-card h3 { margin-block: 8px; font-size: 22px; }
+.squad-card h3 { margin: 0 0 6px; font-size: 24px; color: var(--text); }
+.squad-card:hover { box-shadow: inset 3px 0 var(--terracotta); }
 .squad-card p { color: var(--muted); font-size: 14px; }
 
 .footer {
@@ -724,13 +725,13 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 .header .member-options :is(a, button):hover { background: var(--background); }
 .header .member-options .member-signout { color: #ff8474; border-top: 1px solid var(--line); margin-top: 4px; }
 .member-header .members-link { max-width: min(54vw, 290px); margin-top: 0; }
-.member-menu [hidden], .member-page [hidden], .applications-dialog [hidden] { display: none !important; }
+.member-menu [hidden], .member-page [hidden] { display: none !important; }
 
 .member-page { width: min(100% - 40px, 1120px); margin: clamp(26px, 6vw, 78px) auto; }
 .member-page h1 { margin: 9px 0 14px; font-size: clamp(36px, 7vw, 66px); line-height: 1.03; letter-spacing: -.05em; overflow-wrap: anywhere; }
-.member-page h2, .applications-dialog h2 { margin-bottom: 10px; font-size: clamp(24px, 4vw, 36px); line-height: 1.1; letter-spacing: -.03em; }
-.member-page :is(.member-intro, .member-page-status), .applications-dialog :is(.application-message, .history-status) { color: var(--muted); }
-.member-page-status:empty, .application-message:empty, .history-status:empty, #squad-status:empty { display: none; }
+.member-page h2 { margin-bottom: 10px; font-size: clamp(24px, 4vw, 36px); line-height: 1.1; letter-spacing: -.03em; }
+.member-page :is(.member-intro, .member-page-status, .application-message, .history-status, #management-members-status) { color: var(--muted); }
+.member-page-status:empty, .application-message:empty, .history-status:empty, #squad-status:empty, #management-status:empty, #management-members-status:empty { display: none; }
 .member-page-signin { display: inline-flex; align-items: center; margin-top: 12px; }
 .profile-banner {
   display: grid;
@@ -789,13 +790,15 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 .privacy-form label { display: flex; align-items: center; gap: 10px; min-height: 30px; }
 .privacy-form input[type="checkbox"] { width: 18px; min-height: 18px; height: 18px; accent-color: var(--terracotta); }
 .directory-profile, .member-directory { display: grid; gap: 14px; margin-top: 16px; }
-.squad-panel, .application-row, .application-history {
+.squad-panel, .application-row, .admin-account {
   border: 1px solid var(--line);
   padding: 12px 15px;
   background: var(--surface);
 }
-.squad-panel summary, .application-row summary, .application-history summary { cursor: pointer; }
+.squad-panel summary, .application-row summary, .admin-account summary { cursor: pointer; }
+.squad-panel:is(:hover, :focus-within, [open]) { box-shadow: inset 3px 0 var(--terracotta); }
 .squad-identity { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.squad-identity strong { font-size: 22px; color: var(--text); }
 .squad-identity span { color: var(--muted); font-size: 13px; }
 .squad-identity img { width: 32px; height: 32px; object-fit: contain; }
 .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 182px), 1fr)); gap: 8px; margin-top: 12px; }
@@ -809,15 +812,12 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
   overflow-wrap: anywhere;
 }
 .member-tile:hover { border-color: var(--terracotta-light); }
-.member-tile strong, .member-tile span > span { display: block; }
-.member-tile span > span, .member-activity time { color: var(--muted); font-size: 13px; }
+.member-tile strong { min-width: 0; }
+.member-activity time { color: var(--muted); font-size: 13px; }
 .member-activity li { margin-bottom: 8px; }
 .member-activity time { margin-left: 10px; }
-.applications-dialog { width: min(780px, 94vw); max-height: 88dvh; overflow: auto; }
-.applications-dialog .eyebrow { margin-top: 12px; }
-.application-signin { margin-top: 12px; }
 .application-list { display: grid; gap: 8px; }
-.application-list:not(:empty), .application-history { margin-top: 15px; }
+.application-list:not(:empty) { margin-top: 10px; }
 .application-row summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(96px, auto) auto;
@@ -837,13 +837,46 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 .application-confirm p { margin-bottom: 8px; }
 .confirmation-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .confirmation-actions > button { min-height: 44px; padding-inline: 5px; margin: 0; text-align: center; }
-.management-actions { margin-top: 14px; }
-.management-actions a { margin-top: 0; }
-.management-review { margin-top: 18px; }
-.management-review ul { margin: 0 0 14px; padding-left: 20px; }
-.management-review li { margin-bottom: 8px; overflow-wrap: anywhere; }
 .application-history-entry { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
 .application-history-entry p { color: var(--muted); }
+.admin-layout { display: grid; gap: 18px; margin-top: 22px; }
+.admin-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+}
+.admin-section-heading h2 { margin: 0; }
+.admin-views { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--line); background: var(--surface); }
+.admin-views button { padding: 7px 12px; min-height: 38px; border: 1px solid transparent; background: transparent; }
+.admin-views button[aria-pressed="true"] { border-color: var(--accent-line); color: var(--terracotta-light); background: var(--background); }
+.admin-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--muted); font-size: 13px; }
+.admin-filter input { min-width: 0; max-width: 100%; padding: 8px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; }
+.admin-member-list { display: grid; gap: 8px; }
+.admin-account summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, .55fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+  min-height: 38px;
+  list-style: none;
+}
+.admin-account summary::-webkit-details-marker { display: none; }
+.admin-identity { display: grid; min-width: 0; overflow-wrap: anywhere; }
+.admin-identity strong::before { content: "▸"; display: inline-block; margin-right: 7px; color: var(--terracotta-light); }
+.admin-account[open] .admin-identity strong::before { transform: rotate(90deg); }
+.admin-identity span, .admin-role, .admin-contact { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.admin-state { padding: 3px 7px; border: 1px solid var(--line); font-size: 12px; white-space: nowrap; }
+.admin-state[data-state="ACTIVA"] { color: #b6dec2; border-color: #42624a; }
+.admin-state[data-state="PENDIENTE"] { color: #f1c38e; border-color: #735432; }
+.admin-state:is([data-state="SUSPENDIDA"], [data-state="RECHAZADA"]) { color: #ffae9c; border-color: var(--accent-line); }
+.admin-account-form { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+.admin-account-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.admin-account-fields select { min-width: 0; }
+.admin-save { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.admin-save .form-message:empty { display: none; }
 
 @media (max-width: 950px) { .header nav .members-link { max-width: 190px; } }
 @media (max-width: 767px) {
@@ -856,6 +889,11 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 }
 @media (max-width: 480px) {
   .application-row summary { grid-template-columns: minmax(0, 1fr) auto; }
+  .admin-account summary { grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; }
+  .admin-identity { grid-row: span 2; }
+  .admin-role, .admin-state { justify-self: end; }
+  .admin-filter { flex: 1 1 100%; }
+  .admin-filter input { flex: 1; }
   .member-page { width: calc(100% - 28px); }
   .member-header .brand span { font-size: 11px; }
 }
