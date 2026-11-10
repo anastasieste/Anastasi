@@ -73,8 +73,14 @@ begin
   exception when invalid_parameter_value then null; end;
   if public.portal_manage_accounts(jsonb_build_array(jsonb_build_object('id',member,'revision',1,
     'expected_role','qa_moderator','expected_state','SUSPENDIDA','expected_callsign','MGTQA-MEMBER',
-    'expected_squad','ANS098','role','administrator','state','ACTIVA','squad','ANSG52'))) <> 1 then
+    'expected_squad','ANS098','role','administrator','state','ACTIVA','squad','ANSG52','note','Reactivado en el panel'))) <> 1 then
     raise exception 'No se aplicó la reactivación';
+  end if;
+  if public.portal_manage_accounts('[{"id":"20806000-2026-1109-0000-000000000003","revision":0,"expected_role":"member","expected_state":"PENDIENTE","expected_callsign":"MGTQA-PENDING","expected_squad":"ANS098","note":"En espera de confirmación"}]') <> 1 then
+    raise exception 'No se guardó la nota de una cuenta pendiente';
+  end if;
+  if not (public.portal_management_snapshot()->'members' @> '[{"callsign":"MGTQA-MEMBER","management_note":"Reactivado en el panel"}]') then
+    raise exception 'La nota privada no se recuperó';
   end if;
 end;
 $$;
@@ -83,6 +89,8 @@ do $$
 begin
   if (select count(*) from members_private.account_management_log where member_id='20806000-2026-1109-0000-000000000002'
     and administrator_id='20806000-2026-1109-0000-000000000001') <> 2 then raise exception 'Auditoría incompleta'; end if;
+  if not exists(select from members_private.account_management_log where member_id='20806000-2026-1109-0000-000000000002'
+    and updated->>'note'='Reactivado en el panel') then raise exception 'La nota no quedó auditada'; end if;
   if exists(select from auth.users where id='20806000-2026-1109-0000-000000000002' and banned_until is not null) then
     raise exception 'La reactivación dejó la restricción de acceso';
   end if;
