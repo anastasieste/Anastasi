@@ -835,12 +835,19 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 .application-email { overflow-wrap: anywhere; }
 .application-confirm { padding: 10px; border: 1px solid var(--accent-line); }
 .application-confirm p { margin-bottom: 8px; }
+.confirmation-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.confirmation-actions > button { min-height: 44px; padding-inline: 5px; margin: 0; text-align: center; }
+.management-actions { margin-top: 14px; }
+.management-actions a { margin-top: 0; }
+.management-review { margin-top: 18px; }
+.management-review ul { margin: 0 0 14px; padding-left: 20px; }
+.management-review li { margin-bottom: 8px; overflow-wrap: anywhere; }
 .application-history-entry { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
 .application-history-entry p { color: var(--muted); }
 
 @media (max-width: 950px) { .header nav .members-link { max-width: 190px; } }
 @media (max-width: 767px) {
-  .header nav .members-link { width: 100%; max-width: none; }
+  .header nav .members-link { width: 100%; max-width: none; margin-top: 8px; }
   .header nav .member-options { position: static; margin-top: 6px; box-shadow: none; }
   .profile-layout { grid-template-columns: 1fr; gap: 12px; }
   .profile-navigation { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); }
