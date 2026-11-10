@@ -179,7 +179,7 @@ export const account = {
   }),
   pendingApplications: () => rpc('pending_member_applications'),
   applicationHistory: () => rpc('portal_application_history'),
-  managementSheet: action => memberRequest('/functions/v1/member-management', { body: { action } }),
+  managementSnapshot: () => rpc('portal_management_snapshot'),
   manageAccounts: changes => rpc('portal_manage_accounts', { changes }),
   decide: (application_id, approved, review_note) => rpc('decide_member_application', { application_id, approved, review_note }),
 

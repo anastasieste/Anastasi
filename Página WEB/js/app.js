@@ -25,11 +25,10 @@ const loginForm = portal.querySelector('#login-form');
 const recoveryForm = portal.querySelector('#recovery-form');
 const titles = { login: 'portal-title', recover: 'recovery-title' };
 const menu = setupMemberMenu(portalButton, {
-  onSignIn: openPortal,
+  onSignIn: () => openPortal(),
   onSignOut: () => { if (portal.open) portal.close(); },
   loginDialog: true,
 });
-let reviewAfterSignIn = false;
 let managementAfterSignIn = false;
 let memberVersion = 0;
 initializeAccountForms(portal);
@@ -42,14 +41,12 @@ function showPortalView(view, moveFocus = true) {
   if (moveFocus) document.getElementById(titles[view]).focus();
 }
 
-function openPortal(review = false, management = false) {
+function openPortal(management = false) {
   closeMenu();
-  reviewAfterSignIn = review;
   managementAfterSignIn = management;
   showPortalView('login', false);
   if (!portal.open) portal.showModal();
-  if (review) formMessage(loginForm, 'Inicia sesión con una cuenta de administrador para revisar solicitudes.');
-  if (management) formMessage(loginForm, 'Inicia sesión con una cuenta de administrador para gestionar miembros.');
+  if (management) formMessage(loginForm, 'Inicia sesión con una cuenta de administrador para abrir el Panel Admin.');
 }
 
 portal.querySelector('.dialog-close').addEventListener('click', () => portal.close());
@@ -59,7 +56,7 @@ portal.addEventListener('close', () => {
   recoveryForm.reset();
   formMessage(loginForm, '');
   formMessage(recoveryForm, '');
-  if (!document.querySelector('.applications-dialog[open]')) (desktop.matches ? portalButton : toggle).focus();
+  (desktop.matches ? portalButton : toggle).focus();
 });
 for (const button of portal.querySelectorAll('[data-portal-view]')) {
   button.addEventListener('click', () => showPortalView(button.dataset.portalView));
@@ -69,12 +66,10 @@ loginForm.addEventListener('submit', event => {
   submitAccountForm(loginForm, 'Iniciando sesión…', async ({ identifier, password }) => {
     const profile = await account.signIn(identifier.trim(), password);
     memberVersion++;
-    const openReview = reviewAfterSignIn;
     loginForm.reset();
     menu.update(profile);
     if (portal.open) portal.close();
     if (managementAfterSignIn) location.href = 'gestion.html';
-    else if (openReview) menu.openApplications();
     else if (!desktop.matches) toggle.click();
   });
 });
@@ -100,10 +95,9 @@ async function handlePortalRoute() {
   if (!['#portal', '#solicitudes', '#gestion'].includes(hash)) return;
   history.replaceState(null, '', location.pathname + location.search);
   const profile = await syncMember();
-  if (hash === '#solicitudes') await menu.openApplications();
-  else if (hash === '#gestion') {
+  if (hash === '#solicitudes' || hash === '#gestion') {
     if (profile?.status === 'approved') location.href = 'gestion.html';
-    else openPortal(false, true);
+    else openPortal(true);
   }
   else if (!profile || profile.status !== 'approved') openPortal();
   else if (!desktop.matches && toggle.getAttribute('aria-expanded') !== 'true') toggle.click();

@@ -9,7 +9,7 @@ const protectedContent = document.querySelector('.member-private');
 const signInLink = document.querySelector('.member-page-signin');
 setupSiteNavigation(document.querySelector('.header'));
 const menu = setupMemberMenu(document.querySelector('.members-link'), {
-  onSignIn: review => { location.href = review ? './#solicitudes' : './#portal'; },
+  onSignIn: () => { location.href = './#portal'; },
   onSignOut: () => { location.replace('./'); },
 });
 const date = new Intl.DateTimeFormat('es-PR', { dateStyle: 'medium', timeZone: 'UTC' });
@@ -65,9 +65,7 @@ function memberCards(members) {
   for (const member of members) {
     const card = node('a', '', 'member-tile');
     card.href = 'perfil.html?miembro=' + encodeURIComponent(member.id);
-    const labels = node('span');
-    labels.append(node('strong', member.callsign), node('span', member.squad));
-    card.append(avatarFor(member), labels);
+    card.append(avatarFor(member), node('strong', member.callsign));
     grid.append(card);
   }
   return grid;
@@ -81,7 +79,7 @@ function squadHeading(squad, count) {
     badge.src = 'assets/images/squads/' + squad.badge_file;
     title.append(badge);
   }
-  const name = squad.display_name ? squad.display_name + ' · ' + squad.code : squad.code;
+  const name = squad.display_name || squad.code;
   title.append(node('strong', name), node('span', count + (count === 1 ? ' integrante' : ' integrantes')));
   return title;
 }

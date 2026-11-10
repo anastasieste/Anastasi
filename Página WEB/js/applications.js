@@ -9,54 +9,31 @@ function text(tag, value, className) {
 
 const date = new Intl.DateTimeFormat('es-PR', { dateStyle: 'medium', timeStyle: 'short' });
 
-export function setupApplications(onSignIn) {
-  const dialog = document.createElement('dialog');
-  dialog.className = 'applications-dialog';
-  dialog.setAttribute('aria-labelledby', 'applications-title');
-  dialog.innerHTML = `
-    <button type="button" class="dialog-close" autofocus>Cerrar <span aria-hidden="true">×</span></button>
-    <p class="eyebrow">ANÁSTASI · ADMINISTRACIÓN</p>
-    <h2 id="applications-title">Solicitudes de membresía</h2>
-    <p class="application-message" role="status"></p>
-    <button type="button" class="account-submit application-signin" hidden>Abrir Portal Miembros</button>
-    <div class="application-list"></div>
-    <details class="application-history" hidden>
-      <summary>Historial reciente</summary>
-      <p class="history-status" role="status"></p>
-      <div class="history-list"></div>
-    </details>`;
-  document.body.append(dialog);
-  const status = dialog.querySelector('.application-message');
-  const list = dialog.querySelector('.application-list');
-  const signIn = dialog.querySelector('.application-signin');
-  const history = dialog.querySelector('.application-history');
+export function setupApplications(section, onDecision) {
+  const pending = section.querySelector('#applications-pending');
+  const status = pending.querySelector('.application-message');
+  const list = pending.querySelector('.application-list');
+  const history = section.querySelector('#applications-history');
   const historyStatus = history.querySelector('.history-status');
   const historyList = history.querySelector('.history-list');
+  const views = [...section.querySelectorAll('[data-application-view]')];
+  let enabled = false;
   let generation = 0;
   let historyLoaded = false;
   let historyRequest = 0;
-  let opener;
 
-  function dismiss() {
-    if (!dialog.open) return;
-    dialog.close();
-    generation++;
-    list.replaceChildren();
-    historyList.replaceChildren();
+  for (const button of views) {
+    button.addEventListener('click', () => {
+      const showHistory = button.dataset.applicationView === 'history';
+      pending.hidden = showHistory;
+      history.hidden = !showHistory;
+      for (const view of views) view.setAttribute('aria-pressed', String(view === button));
+      if (showHistory) loadHistory();
+    });
   }
 
-  dialog.querySelector('.dialog-close').addEventListener('click', dismiss);
-  dialog.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
-  dialog.addEventListener('close', () => {
-    if (dialog.open || !opener?.isConnected) return;
-    if (getComputedStyle(opener).visibility === 'visible') opener.focus();
-    else document.querySelector('.menu-toggle')?.focus();
-  });
-  signIn.addEventListener('click', () => { dismiss(); onSignIn(); });
-  history.addEventListener('toggle', () => { if (history.open) loadHistory(); });
-
   async function loadHistory() {
-    if (historyLoaded || history.hidden || !dialog.open) return;
+    if (historyLoaded || !enabled) return;
     historyLoaded = true;
     const request = generation;
     const sequence = ++historyRequest;
@@ -98,7 +75,6 @@ export function setupApplications(onSignIn) {
     form.innerHTML = `
       <p class="application-email"></p>
       <label>Nota administrativa <textarea name="note" maxlength="1000" rows="3"></textarea>
-        <small>Opcional. Solo la pueden consultar administradores.</small>
       </label>
       <div class="member-actions" data-decision-actions>
         <button type="button" class="account-submit" data-decision="approve">Aceptar</button>
@@ -145,16 +121,17 @@ export function setupApplications(onSignIn) {
         await account.decide(application.id, decision, note);
         if (request !== generation) return;
         const message = decision ? 'Solicitud aprobada. Correo en cola.' : 'Solicitud rechazada. Correo en cola.';
-        (row.nextElementSibling?.querySelector('summary') || dialog.querySelector('.dialog-close')).focus();
+        (row.nextElementSibling?.querySelector('summary') || views[0]).focus();
         row.remove();
         status.textContent = message;
         historyLoaded = false;
-        if (history.open) loadHistory();
+        if (!history.hidden) loadHistory();
+        onDecision(application.id);
         if (!list.children.length) await loadApplications(request, message);
       } catch (error) {
         if (request !== generation) return;
         if (error.status === 409) {
-          dialog.querySelector('.dialog-close').focus();
+          views[0].focus();
           row.remove();
           await loadApplications(request, 'Otro administrador ya procesó esta solicitud o dejó de estar disponible.');
         } else {
@@ -176,25 +153,26 @@ export function setupApplications(onSignIn) {
       status.textContent = message || (applications.length ? '' : 'No hay solicitudes pendientes.');
     } catch {
       if (request !== generation) return;
-      status.textContent = [message, 'No se pudieron cargar las solicitudes. Vuelve a abrir la ventana.'].filter(Boolean).join(' ');
+      status.textContent = [message, 'No se pudieron cargar las solicitudes. Recarga la página.'].filter(Boolean).join(' ');
     }
   }
 
-  async function open(profile, trigger = document.activeElement) {
-    if (dialog.open) return;
+  function setEnabled(active) {
+    if (enabled === active) return;
+    enabled = active;
     const request = ++generation;
-    opener = trigger;
     list.replaceChildren();
     historyList.replaceChildren();
-    history.open = false;
     historyLoaded = false;
-    history.hidden = !profile?.is_admin;
-    signIn.hidden = Boolean(profile);
-    status.textContent = profile?.is_admin ? 'Cargando solicitudes…'
-      : profile ? 'Esta área requiere una cuenta de administrador.' : 'Inicia sesión con una cuenta de administrador.';
-    dialog.showModal();
-    if (profile?.is_admin) await loadApplications(request);
+    status.textContent = '';
+    historyStatus.textContent = '';
+    if (!active) return;
+    pending.hidden = false;
+    history.hidden = true;
+    for (const view of views) view.setAttribute('aria-pressed', String(view === views[0]));
+    status.textContent = 'Cargando solicitudes…';
+    loadApplications(request);
   }
 
-  return { open, dismiss };
+  return { setEnabled };
 }
