@@ -30,6 +30,7 @@ export function setupGallery(items) {
   const dialog = document.querySelector('#media-dialog');
   const content = dialog.querySelector('.media-content');
   const approvedItems = items.filter(item => item.approved === true);
+  let filter = 'all';
   function render(filter) {
     const visible = approvedItems.filter(item => filter === 'all' || item.type === filter);
     root.replaceChildren();
@@ -54,7 +55,7 @@ export function setupGallery(items) {
         image.height = 360;
         card.append(image);
       }
-      const date = item.publishedAt ? new Date(`${item.publishedAt}T12:00:00`).toLocaleDateString('es-PR') : '';
+      const date = item.publishedAt ? new Date(`${item.publishedAt.slice(0, 10)}T12:00:00`).toLocaleDateString('es-PR') : '';
       card.append(node('h3', item.title), node('p', [item.callsign, item.squad, date].filter(Boolean).join(' · ')));
       card.addEventListener('click', () => {
         content.replaceChildren();
@@ -74,10 +75,12 @@ export function setupGallery(items) {
   }
   document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
     document.querySelectorAll('[data-filter]').forEach(other => other.setAttribute('aria-pressed', String(other === button)));
-    render(button.dataset.filter);
+    filter = button.dataset.filter;
+    render(filter);
   }));
   dialog.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => { if (event.target === dialog) { const bounds = dialog.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close(); } });
   dialog.addEventListener('close', () => { content.querySelector('video')?.pause(); content.replaceChildren(); });
   render('all');
+  return videos => { approvedItems.unshift(...videos); render(filter); };
 }
