@@ -22,6 +22,7 @@ type Video = {
   title: string;
   bytes: number;
   drive_id: string;
+  cover?: string | null;
   upload_url: string | null;
   created_at: string;
   status: "uploading" | "pending" | "approved" | "rejected" | "abandoned";
@@ -46,14 +47,17 @@ function folders() {
     rejected: configured("VIDEO_DRIVE_REJECTED"),
   };
 }
-async function rpc<T>(operation: string, input: object = {}): Promise<T> {
-  const response = await fetch(project + "/rest/v1/rpc/portal_video_service", {
+async function database<T>(name: string, parameters: object): Promise<T> {
+  const response = await fetch(project + "/rest/v1/rpc/" + name, {
     method: "POST",
     headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ operation, input }),
+    body: JSON.stringify(parameters),
   });
   if (!response.ok) throw new RequestError(503, "No se pudo guardar el estado del video.");
   return await response.json() as T;
+}
+function rpc<T>(operation: string, input: object = {}): Promise<T> {
+  return database<T>("portal_video_service", { operation, input });
 }
 async function identify(request: Request) {
   const authorization = request.headers.get("Authorization");
@@ -69,15 +73,6 @@ async function requireMember(actor: string, admin = false) {
     throw new RequestError(403, admin ? "Se requiere una cuenta de administrador." : "Se requiere una membresía activa.");
   }
 }
-async function editorAccess(actor: string) {
-  const pilot = Deno.env.get("VIDEO_EDITOR_PILOT") === "true";
-  const allowed = await rpc<boolean>(pilot ? "can_review" : "eligible", { actor });
-  return { allowed, pilot };
-}
-async function requireEditor(actor: string) {
-  if (!(await editorAccess(actor)).allowed) throw new RequestError(403, "El Editor todavía está en prueba para administradores.");
-}
-
 let cachedToken: { value: string; until: number } | undefined;
 let requestingToken: Promise<string> | undefined;
 async function driveToken() {
@@ -117,18 +112,54 @@ async function fileInfo(driveId: string): Promise<DriveFile | null> {
   if (!response.ok) throw driveError();
   return await response.json();
 }
+async function availableInGallery(record: Video) {
+  if (record.status !== "approved") return false;
+  const info = await fileInfo(record.drive_id);
+  return !!info && !info.trashed && info.mimeType === "video/mp4" && !!info.parents?.includes(folders().approved);
+}
+async function gallery() {
+  const folder = folders().approved;
+  if (!/^[-\w]+$/.test(folder)) throw driveError();
+  const params = new URLSearchParams({
+    q: `'${folder}' in parents and trashed = false and mimeType = 'video/mp4'`,
+    fields: "nextPageToken,files(id)",
+    pageSize: "1000",
+  });
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+  do {
+    if (pageToken) params.set("pageToken", pageToken);
+    const response = await drive(driveApi + "?" + params);
+    if (!response.ok) throw driveError();
+    const page = await response.json() as { nextPageToken?: string; files: { id: string }[] };
+    ids.push(...(page.files ?? []).map(file => file.id));
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+  return json(ids.length ? await database("portal_video_gallery", { drive_ids: ids }) : []);
+}
+async function cover(record: Video) {
+  if (!record.cover || !await availableInGallery(record)) throw new RequestError(404, "La carátula no está disponible.");
+  const bytes = Uint8Array.from(atob(record.cover.slice("data:image/jpeg;base64,".length)), value => value.charCodeAt(0));
+  return new Response(bytes, { headers: { ...cors, "Content-Type": "image/jpeg", "X-Content-Type-Options": "nosniff" } });
+}
 function uploadOffset(response: Response) {
   const range = response.headers.get("Range");
   const last = range?.match(/^bytes=0-(\d+)$/)?.[1];
   return last === undefined ? 0 : Number(last) + 1;
 }
 async function beginUpload(request: Request, actor: string) {
-  await requireEditor(actor);
+  await requireMember(actor);
   const body = await request.json();
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 100) : "";
   const bytes = body.bytes;
   if (!title || !Number.isInteger(bytes) || bytes < 1 || bytes > maxSize) {
     throw new RequestError(400, "El montaje debe tener un título y ocupar hasta 100 MB.");
+  }
+  const cover = body.cover ?? null;
+  if (cover !== null && (typeof cover !== "string" || cover.length > 80023 ||
+      !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+={0,2}$/.test(cover) ||
+      (cover.length - "data:image/jpeg;base64,".length) % 4 !== 0)) {
+    throw new RequestError(400, "La carátula no es válida.");
   }
   const pending = folders().pending;
   const generated = await drive(driveApi + "/generateIds?count=1&space=drive");
@@ -141,8 +172,8 @@ async function beginUpload(request: Request, actor: string) {
   });
   const uploadUrl = response.headers.get("Location");
   if (!response.ok || !uploadUrl || !/^https:\/\/www\.googleapis\.com\/upload\/drive\/v3\/files\?/.test(uploadUrl)) throw driveError();
-  const record = await rpc<Video | { limit: true } | null>("start", {
-    actor, title, bytes, drive_id: driveId, upload_url: uploadUrl,
+  const record = await database<Video | { limit: true } | null>("portal_video_start_with_cover", {
+    input: { actor, title, bytes, drive_id: driveId, upload_url: uploadUrl, cover },
   });
   if (record && "limit" in record) throw new RequestError(429, "Ya tienes cinco montajes en preparación o revisión.");
   if (!record) throw new RequestError(403, "Se requiere una membresía activa.");
@@ -151,7 +182,7 @@ async function beginUpload(request: Request, actor: string) {
 async function ownUpload(id: string, actor: string) {
   const record = await rpc<Video | null>("get", { id });
   if (!record || record.author_id !== actor) throw new RequestError(404, "No se encontró este envío.");
-  await requireEditor(actor);
+  await requireMember(actor);
   return record;
 }
 async function submitVideo(record: Video, actor: string) {
@@ -233,7 +264,9 @@ async function validTicket(id: string, ticket: string) {
     await rpc<boolean>("can_review", { actor });
 }
 async function play(request: Request, record: Video, ticket: string) {
-  if (record.status !== "approved" && !(record.status === "pending" && ticket && await validTicket(record.id, ticket))) {
+  const available = record.status === "approved" ? await availableInGallery(record)
+    : record.status === "pending" && ticket && await validTicket(record.id, ticket);
+  if (!available) {
     throw new RequestError(404, "El video no está disponible.");
   }
   const range = request.headers.get("Range");
@@ -311,14 +344,20 @@ Deno.serve(async request => {
   const [action, id, extra] = url.pathname.split("/member-video/").at(-1)!.split("/");
   try {
     if (action === "cleanup" && request.method === "POST") return await cleanup(request);
+    if (action === "gallery" && !id && request.method === "GET") return await gallery();
     if (extra || (!["start", "access"].includes(action) && !uuid.test(id))) throw new RequestError(404, "Ruta no disponible.");
+    if (action === "cover" && request.method === "GET") {
+      const record = await rpc<Video | null>("get", { id });
+      if (record) return await cover(record);
+      throw new RequestError(404, "La carátula no está disponible.");
+    }
     if (action === "play" && ["GET", "HEAD"].includes(request.method)) {
       const record = await rpc<Video | null>("get", { id });
       if (!record) throw new RequestError(404, "El video no está disponible.");
       return await play(request, record, url.searchParams.get("ticket") || "");
     }
     const actor = await identify(request);
-    if (action === "access" && !id && request.method === "POST") return json(await editorAccess(actor));
+    if (action === "access" && !id && request.method === "POST") return json({ allowed: await rpc<boolean>("eligible", { actor }) });
     if (action === "start" && !id && request.method === "POST") return await beginUpload(request, actor);
     if (action === "upload" && ["POST", "PUT"].includes(request.method)) return await transfer(request, await ownUpload(id, actor), actor);
     if (["preview", "decide"].includes(action) && request.method === "POST") {
