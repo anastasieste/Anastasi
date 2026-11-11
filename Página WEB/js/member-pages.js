@@ -341,7 +341,15 @@ async function start() {
     administrator = profile.is_admin;
     const id = new URLSearchParams(location.search).get('miembro');
     if (page === 'directory') await renderDirectory();
-    if (page === 'editor') (await import('./editor.js')).setupEditor(profile);
+    if (page === 'editor') {
+      const access = await account.videoEditorAccess();
+      if (!access.allowed) {
+        status.textContent = 'El Editor de video está en prueba para administradores.';
+        return;
+      }
+      (await import('./editor.js')).setupEditor(profile);
+      document.querySelector('#editor-pilot').hidden = !access.pilot;
+    }
     if (page === 'profile') {
       if (id === null) await renderOwnProfile();
       else await renderDirectoryProfile(id);

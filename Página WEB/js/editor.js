@@ -195,7 +195,7 @@ export function setupEditor(profile) {
     }
     duration = length;
     const saved = draft();
-    events = saved?.events.filter(item => item?.id && validEvent(item, duration)).slice(0, 60) ?? [];
+    events = saved?.events.filter(item => item?.id && validEvent(item, duration)) ?? [];
     titleInput.value = saved?.title ?? file.name.replace(/\.[^.]+$/, '').slice(0, 100);
     edit();
     if (saved && events.length) message('Borrador recuperado.');
@@ -219,10 +219,6 @@ export function setupEditor(profile) {
   form.addEventListener('submit', event => {
     event.preventDefault();
     if (busy || !duration) return;
-    if (!selected && events.length >= 60) {
-      formMessage(form, 'Puedes marcar hasta 60 eventos por montaje.', true);
-      return;
-    }
     const type = fields.type.value;
     const start = parseTime(fields.start.value);
     const item = {

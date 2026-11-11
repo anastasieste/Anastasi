@@ -189,6 +189,7 @@ export const account = {
   profileVideos: member_id => rpc('portal_profile_videos', { member_id }),
   publicVideos: () => request('/rest/v1/rpc/portal_public_videos', { body: {} }),
   videoQueue: () => rpc('portal_video_queue'),
+  videoEditorAccess: () => memberRequest('/functions/v1/member-video/access', { method: 'POST' }),
   videoStart: (title, bytes) => memberRequest('/functions/v1/member-video/start', { body: { title, bytes } }),
   videoOffset: id => memberRequest('/functions/v1/member-video/upload/' + id, { method: 'POST' }),
   videoChunk: (id, chunk, offset) => memberRequest('/functions/v1/member-video/upload/' + id, { method: 'PUT', chunk, offset }),
