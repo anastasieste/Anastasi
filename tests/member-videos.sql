@@ -19,6 +19,10 @@ do $$ begin
     perform public.portal_video_service('get','{"id":"76700000-0000-4000-8000-000000000011"}');
     raise exception 'Acceso anónimo a datos de Drive';
   exception when insufficient_privilege then null; end;
+  begin
+    perform public.portal_video_gallery(array['fixture-approval']);
+    raise exception 'Acceso anónimo a la consulta interna de Drive';
+  exception when insufficient_privilege then null; end;
 end $$;
 reset role;
 
@@ -86,6 +90,17 @@ set local role anon;
 do $$ begin
   if (select count(*) from public.portal_public_videos() where id::text like '76700000-%') <> 1 then
     raise exception 'La galería no distingue los estados';
+  end if;
+end $$;
+reset role;
+set local role service_role;
+do $$ begin
+  if (select count(*) from public.portal_video_gallery(array['fixture-approval', 'fixture-rejection'])) <> 1
+     or exists (select from public.portal_video_gallery(array['fixture-rejection'])) then
+    raise exception 'La galería debe filtrar por estado y presencia en Drive';
+  end if;
+  if not exists (select from public.portal_video_gallery(array['fixture-approval']) where not has_cover) then
+    raise exception 'Los videos publicados antes de las carátulas deben seguir apareciendo';
   end if;
 end $$;
 reset role;
