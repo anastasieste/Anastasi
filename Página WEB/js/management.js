@@ -2,7 +2,7 @@ import { account, watchMemberSession } from './account.js';
 import { setupApplications } from './applications.js';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
-import { setupVideoReview } from './video-review.js';
+import { setupVideoReview } from './video-review.js?v=1.7';
 
 const header = document.querySelector('.header');
 setupSiteNavigation(header);

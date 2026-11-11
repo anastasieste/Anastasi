@@ -187,10 +187,10 @@ export const account = {
   decide: (application_id, approved, review_note) => rpc('decide_member_application', { application_id, approved, review_note }),
   videoNotice: show_notice => rpc('portal_video_notice', { show_notice }),
   profileVideos: member_id => rpc('portal_profile_videos', { member_id }),
-  publicVideos: () => request('/rest/v1/rpc/portal_public_videos', { body: {} }),
+  publicVideos: () => request('/functions/v1/member-video/gallery'),
   videoQueue: () => rpc('portal_video_queue'),
   videoEditorAccess: () => memberRequest('/functions/v1/member-video/access', { method: 'POST' }),
-  videoStart: (title, bytes) => memberRequest('/functions/v1/member-video/start', { body: { title, bytes } }),
+  videoStart: (title, bytes, cover) => memberRequest('/functions/v1/member-video/start', { body: { title, bytes, cover } }),
   videoOffset: id => memberRequest('/functions/v1/member-video/upload/' + id, { method: 'POST' }),
   videoChunk: (id, chunk, offset) => memberRequest('/functions/v1/member-video/upload/' + id, { method: 'PUT', chunk, offset }),
   videoPreview: id => memberRequest('/functions/v1/member-video/preview/' + id, { method: 'POST' }),
@@ -207,6 +207,10 @@ export function videoPlayback(id, ticket) {
   const playback = new URL('/functions/v1/member-video/play/' + encodeURIComponent(id), url);
   if (ticket) playback.searchParams.set('ticket', ticket);
   return playback.href;
+}
+
+export function videoCover(id) {
+  return new URL('/functions/v1/member-video/cover/' + encodeURIComponent(id), url).href;
 }
 
 export function watchMemberSession(callback) {
