@@ -456,6 +456,7 @@ button:disabled { cursor: default; opacity: .4; }
 
 .media-card:hover { border-color: var(--terracotta); }
 .media-card img { width: 100%; height: auto; aspect-ratio: 2; object-fit: cover; }
+.media-card-video img { aspect-ratio: 16 / 9; background: var(--black); object-fit: contain; }
 .media-card h3 { margin: 15px 18px; font-size: 17px; font-weight: 500; }
 .media-card p:not(:empty) { margin: 0 18px 16px; color: var(--muted); font-size: 13px; }
 .squad-card { padding: 22px; }

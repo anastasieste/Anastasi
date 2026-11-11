@@ -1,8 +1,8 @@
 .video-editor { display: grid; gap: 20px; }
-.video-source, .video-events header, .video-track-heading, .video-actions {
+.video-source, .video-track-heading, .video-actions {
   display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; justify-content: space-between;
 }
-.video-source label, .video-publish label { display: grid; gap: 5px; min-width: 0; font-size: .86rem; }
+.video-source label { display: grid; gap: 5px; min-width: 0; font-size: .86rem; }
 .video-source input { max-width: 100%; color: var(--muted); font: inherit; }
 .video-source input::file-selector-button { background: var(--surface); border: 1px solid var(--line); color: var(--text); padding: 10px; margin-right: 10px; }
 .video-source p { overflow-wrap: anywhere; }
@@ -24,13 +24,14 @@
 .video-wide { grid-column: 1/-1; }
 .video-actions { justify-content: flex-start; gap: 8px; }
 .video-publish { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px; }
-.video-publish label { max-width: 440px; }
-.video-publish input { width: 100%; min-height: 44px; background: var(--surface); color: var(--text); border: 1px solid var(--line); padding: 8px 10px; font: inherit; }
 .video-publish progress { width: min(100%, 440px); accent-color: var(--terracotta); }
 .video-primary { border-color: var(--terracotta); background: var(--terracotta); color: #080707; font-weight: 700; }
 .video-notice { width: min(480px, calc(100% - 30px)); border: 1px solid var(--accent-line); background: var(--surface); color: var(--text); padding: 22px; }
 .video-notice::backdrop { background: #000b; }
-.video-notice p, .video-notice label { display: block; margin: 12px 0; }
+.video-notice p { margin: 12px 0; }
+.video-notice form { margin-top: 14px; }
+.video-notice .video-notice-checkbox { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.video-notice .video-notice-checkbox input { width: auto; min-height: auto; }
 .video-review-list { display: grid; gap: 10px; margin-top: 14px; }
 .video-review-list summary { overflow-wrap: anywhere; }
 .video-review-list .video-actions { margin-top: 10px; }
