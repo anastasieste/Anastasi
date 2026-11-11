@@ -69,6 +69,14 @@ async function requireMember(actor: string, admin = false) {
     throw new RequestError(403, admin ? "Se requiere una cuenta de administrador." : "Se requiere una membresía activa.");
   }
 }
+async function editorAccess(actor: string) {
+  const pilot = Deno.env.get("VIDEO_EDITOR_PILOT") === "true";
+  const allowed = await rpc<boolean>(pilot ? "can_review" : "eligible", { actor });
+  return { allowed, pilot };
+}
+async function requireEditor(actor: string) {
+  if (!(await editorAccess(actor)).allowed) throw new RequestError(403, "El Editor todavía está en prueba para administradores.");
+}
 
 let cachedToken: { value: string; until: number } | undefined;
 let requestingToken: Promise<string> | undefined;
@@ -115,7 +123,7 @@ function uploadOffset(response: Response) {
   return last === undefined ? 0 : Number(last) + 1;
 }
 async function beginUpload(request: Request, actor: string) {
-  await requireMember(actor);
+  await requireEditor(actor);
   const body = await request.json();
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 100) : "";
   const bytes = body.bytes;
@@ -143,7 +151,7 @@ async function beginUpload(request: Request, actor: string) {
 async function ownUpload(id: string, actor: string) {
   const record = await rpc<Video | null>("get", { id });
   if (!record || record.author_id !== actor) throw new RequestError(404, "No se encontró este envío.");
-  await requireMember(actor);
+  await requireEditor(actor);
   return record;
 }
 async function submitVideo(record: Video, actor: string) {
@@ -303,13 +311,14 @@ Deno.serve(async request => {
   const [action, id, extra] = url.pathname.split("/member-video/").at(-1)!.split("/");
   try {
     if (action === "cleanup" && request.method === "POST") return await cleanup(request);
-    if (extra || (action !== "start" && !uuid.test(id))) throw new RequestError(404, "Ruta no disponible.");
+    if (extra || (!["start", "access"].includes(action) && !uuid.test(id))) throw new RequestError(404, "Ruta no disponible.");
     if (action === "play" && ["GET", "HEAD"].includes(request.method)) {
       const record = await rpc<Video | null>("get", { id });
       if (!record) throw new RequestError(404, "El video no está disponible.");
       return await play(request, record, url.searchParams.get("ticket") || "");
     }
     const actor = await identify(request);
+    if (action === "access" && !id && request.method === "POST") return json(await editorAccess(actor));
     if (action === "start" && !id && request.method === "POST") return await beginUpload(request, actor);
     if (action === "upload" && ["POST", "PUT"].includes(request.method)) return await transfer(request, await ownUpload(id, actor), actor);
     if (["preview", "decide"].includes(action) && request.method === "POST") {
