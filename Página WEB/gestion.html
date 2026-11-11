@@ -8,8 +8,8 @@
   <title>Panel Admin · Anástasi</title>
   <link rel="icon" href="assets/images/branding/Chango2.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css?v=1.5">
-  <link rel="stylesheet" href="css/editor.css">
-  <script type="module" src="js/management.js"></script>
+  <link rel="stylesheet" href="css/editor.css?v=1.7">
+  <script type="module" src="js/management.js?v=1.7"></script>
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -58,6 +58,14 @@
         <div id="admin-video-list" class="video-review-list"></div>
       </section>
     </div>
+    <dialog id="video-decision" class="video-notice" aria-labelledby="video-decision-title" aria-describedby="video-decision-description">
+      <h2 id="video-decision-title"></h2>
+      <p id="video-decision-description"></p>
+      <form method="dialog" class="video-actions">
+        <button class="account-submit" value="cancel" autofocus>Cancelar</button>
+        <button class="account-submit video-primary" id="video-decision-confirm" value="confirm"></button>
+      </form>
+    </dialog>
   </main>
 </body>
 </html>
