@@ -36,7 +36,7 @@ tests/carousel.html           Pruebas del componente en navegador
 .github/workflows/pages.yml   Publicación con GitHub Actions
 ```
 
-Los originales de referencia PNG y PSD permanecen intactos. No se publican en `dist/`. `Editor/` permanece reservado para una fase posterior. El proyecto no utiliza BAT Montaje.
+Los originales de referencia PNG y PSD permanecen fuera de `dist/`. El Editor del Portal Miembros adapta las reglas y el exportador web de BAT Montaje.
 
 ## Publicar en GitHub Pages
 
@@ -47,7 +47,7 @@ Los originales de referencia PNG y PSD permanecen intactos. No se publican en `d
 
 La configuración sigue la [documentación oficial de flujos de GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages). GitHub Free permite Pages en repositorios públicos. No es necesario contratar un servicio. Si tu rama tiene otro nombre, ajusta `branches` en el flujo.
 
-Todas las rutas del sitio son relativas y el manifest y Service Worker están limitados a la subruta del sitio. También puedes ejecutar `node scripts/package-pages.mjs` y servir `dist/` con cualquier servidor estático. El script reemplaza exclusivamente esa carpeta de salida.
+Todas las rutas del sitio son relativas y el manifest y Service Worker están limitados a la subruta del sitio. Para probar el Editor localmente, ejecuta `npm ci --ignore-scripts` y `node scripts/package-pages.mjs`, y sirve `dist/` con un servidor estático.
 
 Repositorio oficial: [anastasieste/Anastasi](https://github.com/anastasieste/Anastasi). El estado de publicación se puede consultar en [GitHub Actions](https://github.com/anastasieste/Anastasi/actions).
 
@@ -115,6 +115,7 @@ node --check "Página WEB/js/app.js"
 node --check "Página WEB/js/components/carousel.js"
 node --check "Página WEB/js/components/collections.js"
 node --check "Página WEB/sw.js"
+npm ci --ignore-scripts
 node scripts/package-pages.mjs
 ```
 
@@ -125,6 +126,6 @@ Revisa también en dispositivos reales: iPhone/Safari, Android, teclado y movimi
 1. Incorporar fotografías autorizadas, escuadrones y enlaces sociales oficiales.
 2. Validar la web publicada en dispositivos reales.
 3. Conectar y verificar el servicio del Portal Miembros.
-4. Desarrollar el editor multimedia independiente y la integración de contenido aprobado con Drive / Apps Script.
+4. Validar el Editor de video con grabaciones reales en iOS y Android.
 
 El **Portal Miembros** tiene inicio de sesión, registro, recuperación y revisión administrativa. Para activar las solicitudes y los correos, sigue [la guía de Supabase](supabase/README.md).

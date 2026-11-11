@@ -2,6 +2,7 @@ import { account, watchMemberSession } from './account.js';
 import { setupApplications } from './applications.js';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
+import { setupVideoReview } from './video-review.js';
 
 const header = document.querySelector('.header');
 setupSiteNavigation(header);
@@ -16,6 +17,7 @@ const membersStatus = document.querySelector('#management-members-status');
 const list = document.querySelector('#management-members');
 const search = document.querySelector('#management-filter');
 const applications = setupApplications(document.querySelector('#solicitudes'), id => loadMembers(id));
+const videos = setupVideoReview();
 const stateLabels = { ACTIVA: 'Activa', SUSPENDIDA: 'Suspendida', PENDIENTE: 'Pendiente', RECHAZADA: 'Rechazada' };
 const rows = new Map();
 let administrator;
@@ -180,9 +182,10 @@ async function start() {
       : signin.hidden ? 'Esta página requiere permisos de administrador.' : 'Inicia sesión con una cuenta de administrador.';
     if (administrator === previous) return;
     sessionVersion++;
-    if (previous) applications.setEnabled(false);
+    if (previous) { applications.setEnabled(false); videos.setEnabled(false); }
     if (administrator) {
       applications.setEnabled(true);
+      videos.setEnabled(true);
       membersStatus.textContent = 'Cargando miembros…';
       await loadMembers();
     } else {
@@ -195,6 +198,7 @@ async function start() {
     administrator = undefined;
     panel.hidden = true;
     applications.setEnabled(false);
+    videos.setEnabled(false);
     rows.clear();
     list.replaceChildren();
     status.textContent = error.message;

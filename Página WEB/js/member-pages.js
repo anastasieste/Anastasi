@@ -1,4 +1,4 @@
-import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, watchMemberSession } from './account.js';
+import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, videoPlayback, watchMemberSession } from './account.js';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
 import { galleryItems } from './data/content.js?v=1.2';
@@ -106,10 +106,10 @@ async function renderDirectory() {
   if (!directory.children.length) directory.append(node('p', 'Todavía no hay miembros aprobados.'));
 }
 
-function activity(container, memberId, own = false) {
-  // La galería existente contiene exclusivamente publicaciones públicas. Una futura
-  // fuente del Editor podrá devolver el mismo formato, filtrado en Supabase por miembro y privacidad.
-  const items = galleryItems.filter(item => item.approved === true && item.memberId === memberId && item.publishedAt && item.src);
+async function activity(container, memberId, own = false) {
+  const staticItems = galleryItems.filter(item => item.approved === true && item.memberId === memberId && item.publishedAt && item.src);
+  const published = await account.profileVideos(memberId).catch(() => []);
+  const items = [...published.map(item => ({ ...item, publishedAt: item.published_at, src: videoPlayback(item.id) })), ...staticItems];
   if (!items.length) {
     container.replaceChildren(node('p', own ? 'Todavía no tienes actividad publicada.' : 'Todavía no hay actividad publicada.'));
     return;
@@ -236,6 +236,15 @@ async function renderOwnProfile() {
     await account.updatePrivacy(...fields.map(field => privacy.elements[field].checked));
     formMessage(privacy, 'Preferencias guardadas.');
   });
+  const videoPrivacy = document.querySelector('#video-privacy-form');
+  account.videoNotice().then(value => {
+    videoPrivacy.elements.show_notice.checked = value;
+    videoPrivacy.hidden = false;
+  }).catch(() => {});
+  bindForm(videoPrivacy, 'Guardando…', async () => {
+    await account.videoNotice(videoPrivacy.elements.show_notice.checked);
+    formMessage(videoPrivacy, 'Preferencia guardada.');
+  });
   activity(document.querySelector('#member-activity'), self.id, true);
 
   const sections = [...document.querySelectorAll('[data-section]')];
@@ -332,6 +341,15 @@ async function start() {
     administrator = profile.is_admin;
     const id = new URLSearchParams(location.search).get('miembro');
     if (page === 'directory') await renderDirectory();
+    if (page === 'editor') {
+      const access = await account.videoEditorAccess();
+      if (!access.allowed) {
+        status.textContent = 'El Editor de video está en prueba para administradores.';
+        return;
+      }
+      (await import('./editor.js')).setupEditor(profile);
+      document.querySelector('#editor-pilot').hidden = !access.pilot;
+    }
     if (page === 'profile') {
       if (id === null) await renderOwnProfile();
       else await renderDirectoryProfile(id);

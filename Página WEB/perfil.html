@@ -90,8 +90,13 @@
               <label><input type="checkbox" name="show_biography"> Mostrar mi biografía</label>
               <label><input type="checkbox" name="show_full_name"> Mostrar mi nombre real</label>
               <label><input type="checkbox" name="show_details"> Mostrar mi información adicional</label>
-              <label><input type="checkbox" name="show_activity"> Mostrar mi actividad publicada</label>
+              <label><input type="checkbox" name="show_activity"> Mostrar mi actividad publicada en mi perfil</label>
               <button type="submit" class="account-submit" disabled>Guardar privacidad</button>
+              <p class="form-message" role="status"></p>
+            </form>
+            <form id="video-privacy-form" class="account-form privacy-form" hidden>
+              <label><input type="checkbox" name="show_notice"> Mostrar el aviso antes de enviar videos a revisión</label>
+              <button type="submit" class="account-submit">Guardar aviso de publicación</button>
               <p class="form-message" role="status"></p>
             </form>
           </section>
