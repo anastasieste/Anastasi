@@ -1,8 +1,8 @@
 // Aumentar VERSION cada vez que cambien los archivos de la estructura.
-const VERSION = 'anastasi-v1.5.0';
+const VERSION = 'anastasi-v1.6.0';
 const CACHE = `${VERSION}-${self.registration.scope}`;
 const SHELL = [
-  './', './index.html', './css/styles.css?v=1.5', './js/app.js?v=1.5', './js/account.js', './js/member-menu.js',
+  './', './index.html', './css/styles.css?v=1.5', './js/app.js?v=1.6', './js/account.js', './js/member-menu.js',
   './js/data/account-config.js', './js/data/content.js?v=1.2',
   './js/site-navigation.js', './js/components/carousel.js', './js/components/collections.js', './manifest.webmanifest',
 ];

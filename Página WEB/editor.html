@@ -8,6 +8,7 @@
   <title>Editor · Anástasi</title>
   <link rel="icon" href="assets/images/branding/Chango2.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css?v=1.5">
+  <link rel="stylesheet" href="css/editor.css">
   <script type="module" src="js/member-pages.js"></script>
 </head>
 <body data-member-page="editor">
@@ -21,10 +22,58 @@
     <h1>Editor</h1>
     <p class="member-page-status" role="status">Comprobando sesión…</p>
     <a class="account-submit member-page-signin" href="./#portal" hidden>Abrir Portal Miembros</a>
-    <section class="member-private member-panel" hidden>
-      <h2>Próximamente</h2>
-      <p>Este espacio será para preparar y enviar fotos y videos a revisión.</p>
+    <section class="member-private video-editor" aria-label="Editor de video" hidden>
+      <div class="video-source">
+        <label>Video fuente <input type="file" id="video-file" accept="video/*,.mp4,.mov,.m4v,.webm"></label>
+        <p class="member-meta" id="video-source-name">Duración máxima: 20 minutos</p>
+      </div>
+      <div class="video-workspace">
+        <section class="video-player" aria-label="Vista previa">
+          <video id="editor-player" controls playsinline preload="metadata"></video>
+          <div class="video-track-heading"><h2>Clips del montaje</h2><output id="video-summary" aria-live="polite">0 clips</output></div>
+          <div id="video-track" class="video-track" aria-hidden="true"></div>
+        </section>
+        <section class="member-panel video-events" aria-labelledby="video-events-title">
+          <header><h2 id="video-events-title">Eventos</h2><button class="account-submit" id="video-new" type="button" disabled>Añadir evento</button></header>
+          <ul id="video-events" class="video-event-list"></ul>
+          <form id="video-event-form" class="account-form">
+            <fieldset class="video-fields" disabled>
+              <label class="video-wide">Tipo<select name="type"><option>Kill</option><option>Combate</option><option>Otro</option></select></label>
+              <label class="video-wide" id="video-other" hidden>Nombre<input name="name" maxlength="40"></label>
+              <label>Inicio<input name="start" inputmode="numeric" placeholder="0:00" required></label>
+              <label id="video-end" hidden>Fin<input name="end" inputmode="numeric" placeholder="0:00"></label>
+              <label>Antes (seg)<input name="before" type="number" min="0" max="600" required value="7"></label>
+              <label>Después (seg)<input name="after" type="number" min="0" max="600" required value="3"></label>
+              <div class="video-actions video-wide">
+                <button class="account-submit" id="video-mark-start" type="button">Marcar inicio</button>
+                <button class="account-submit" id="video-mark-end" type="button" hidden>Marcar fin</button>
+                <button class="account-submit" id="video-save" type="submit">Añadir evento</button>
+                <button class="account-submit" id="video-remove" type="button" hidden>Eliminar</button>
+              </div>
+            </fieldset>
+            <p class="form-message" role="status"></p>
+          </form>
+        </section>
+      </div>
+      <div class="video-publish">
+        <label>Título del montaje<input id="video-title" maxlength="100"></label>
+        <div class="video-actions">
+          <button type="button" class="account-submit" id="video-export" disabled>Exportar MP4</button>
+          <button type="button" class="account-submit video-primary" id="video-submit" disabled>Enviar a revisión</button>
+        </div>
+        <progress id="video-progress" max="100" aria-label="Progreso de subida" hidden></progress>
+        <p id="video-status" class="form-message" role="status"></p>
+      </div>
     </section>
+    <dialog id="video-notice" class="video-notice" aria-labelledby="video-notice-title">
+      <h2 id="video-notice-title">Enviar a revisión</h2>
+      <p>Si un administrador aprueba tu video, se publicará en la Galería de Anástasi y cualquier visitante podrá verlo.</p>
+      <label><input type="checkbox" id="video-notice-skip"> No volver a mostrar este aviso</label>
+      <div class="video-actions">
+        <button type="button" class="account-submit" id="video-notice-cancel">Cancelar</button>
+        <button type="button" class="account-submit video-primary" id="video-notice-confirm">Enviar a revisión</button>
+      </div>
+    </dialog>
   </main>
 </body>
 </html>
