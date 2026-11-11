@@ -1,3 +1,5 @@
+import { captureVideoCover } from '../video-cover.js';
+
 function node(tag, text, className) {
   const element = document.createElement(tag);
   if (text) element.textContent = text;
@@ -30,9 +32,27 @@ export function setupGallery(items) {
   const dialog = document.querySelector('#media-dialog');
   const content = dialog.querySelector('.media-content');
   const approvedItems = items.filter(item => item.approved === true);
+  let publishedVideos = [];
   let filter = 'all';
+  const coverSources = new Map();
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const image = entry.target;
+      observer.unobserve(image);
+      const source = image.dataset.video;
+      let cover = coverSources.get(source);
+      if (!cover) {
+        cover = captureVideoCover(source, true);
+        coverSources.set(source, cover);
+        cover.then(value => { if (!value) coverSources.delete(source); });
+      }
+      cover.then(value => { if (value && image.isConnected) image.src = value; });
+    }
+  }, { rootMargin: '150px' });
   function render(filter) {
-    const visible = approvedItems.filter(item => filter === 'all' || item.type === filter);
+    const visible = [...publishedVideos, ...approvedItems].filter(item => filter === 'all' || item.type === filter);
+    observer.disconnect();
     root.replaceChildren();
     root.classList.toggle('has-content', visible.length > 0);
     document.querySelector('#gallery-count').textContent = `${visible.length} ${visible.length === 1 ? 'publicación' : 'publicaciones'}`;
@@ -43,20 +63,33 @@ export function setupGallery(items) {
       return;
     }
     for (const item of visible) {
-      const card = node('button', '', 'media-card');
+      const isVideo = item.type === 'video';
+      const card = node('button', '', isVideo ? 'media-card media-card-video' : 'media-card');
       card.type = 'button';
       card.setAttribute('aria-label', `Abrir ${item.type === 'video' ? 'video' : 'fotografía'}: ${item.title}`);
-      if (item.thumbnail || item.type === 'photo') {
+      if (isVideo || item.thumbnail || item.type === 'photo') {
         const image = node('img');
-        image.src = item.thumbnail || item.src;
-        image.alt = item.alt || item.title;
+        image.alt = isVideo ? '' : item.alt || item.title;
         image.loading = 'lazy';
         image.width = 640;
         image.height = 360;
         card.append(image);
+        if (isVideo) {
+          image.dataset.video = item.src;
+          if (item.thumbnail) {
+            image.addEventListener('error', () => {
+              image.removeAttribute('src');
+              if (image.isConnected) observer.observe(image);
+            }, { once: true });
+            image.src = item.thumbnail;
+          } else observer.observe(image);
+        } else image.src = item.thumbnail || item.src;
       }
-      const date = item.publishedAt ? new Date(`${item.publishedAt.slice(0, 10)}T12:00:00`).toLocaleDateString('es-PR') : '';
-      card.append(node('h3', item.title), node('p', [item.callsign, item.squad, date].filter(Boolean).join(' · ')));
+      card.append(node('h3', item.title));
+      if (!isVideo) {
+        const date = item.publishedAt ? new Date(`${item.publishedAt.slice(0, 10)}T12:00:00`).toLocaleDateString('es-PR') : '';
+        card.append(node('p', [item.callsign, item.squad, date].filter(Boolean).join(' · ')));
+      }
       card.addEventListener('click', () => {
         content.replaceChildren();
         const media = node(item.type === 'video' ? 'video' : 'img');
@@ -65,7 +98,8 @@ export function setupGallery(items) {
           media.controls = true;
           media.preload = 'metadata';
           media.playsInline = true;
-          if (item.thumbnail) media.poster = item.thumbnail;
+          const poster = card.querySelector('img')?.getAttribute('src');
+          if (poster) media.poster = poster;
         } else media.alt = item.alt || item.title;
         content.append(media, node('p', item.title));
         dialog.showModal();
@@ -82,5 +116,9 @@ export function setupGallery(items) {
   dialog.addEventListener('click', event => { if (event.target === dialog) { const bounds = dialog.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close(); } });
   dialog.addEventListener('close', () => { content.querySelector('video')?.pause(); content.replaceChildren(); });
   render('all');
-  return videos => { approvedItems.unshift(...videos); render(filter); };
+  return videos => {
+    if (JSON.stringify(videos) === JSON.stringify(publishedVideos)) return;
+    publishedVideos = videos;
+    render(filter);
+  };
 }

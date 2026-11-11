@@ -8,8 +8,8 @@
   <title>Editor · Anástasi</title>
   <link rel="icon" href="assets/images/branding/Chango2.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css?v=1.5">
-  <link rel="stylesheet" href="css/editor.css">
-  <script type="module" src="js/member-pages.js"></script>
+  <link rel="stylesheet" href="css/editor.css?v=1.7">
+  <script type="module" src="js/member-pages.js?v=1.7"></script>
 </head>
 <body data-member-page="editor">
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -23,7 +23,6 @@
     <p class="member-page-status" role="status">Comprobando sesión…</p>
     <a class="account-submit member-page-signin" href="./#portal" hidden>Abrir Portal Miembros</a>
     <section class="member-private video-editor" aria-label="Editor de video" hidden>
-      <p class="member-meta" id="editor-pilot" hidden>Prueba para administradores</p>
       <div class="video-source">
         <label>Video fuente <input type="file" id="video-file" accept="video/*,.mp4,.mov,.m4v,.webm"></label>
         <p class="member-meta" id="video-source-name">Duración máxima: 20 minutos</p>
@@ -35,7 +34,7 @@
           <div id="video-track" class="video-track" aria-hidden="true"></div>
         </section>
         <section class="member-panel video-events" aria-labelledby="video-events-title">
-          <header><h2 id="video-events-title">Eventos</h2><button class="account-submit" id="video-new" type="button" disabled>Añadir evento</button></header>
+          <h2 id="video-events-title">Eventos</h2>
           <ul id="video-events" class="video-event-list"></ul>
           <form id="video-event-form" class="account-form">
             <fieldset class="video-fields" disabled>
@@ -57,7 +56,6 @@
         </section>
       </div>
       <div class="video-publish">
-        <label>Título del montaje<input id="video-title" maxlength="100"></label>
         <div class="video-actions">
           <button type="button" class="account-submit" id="video-export" disabled>Exportar MP4</button>
           <button type="button" class="account-submit video-primary" id="video-submit" disabled>Enviar a revisión</button>
@@ -67,13 +65,18 @@
       </div>
     </section>
     <dialog id="video-notice" class="video-notice" aria-labelledby="video-notice-title">
-      <h2 id="video-notice-title">Enviar a revisión</h2>
-      <p>Si un administrador aprueba tu video, se publicará en la Galería de Anástasi y cualquier visitante podrá verlo.</p>
-      <label><input type="checkbox" id="video-notice-skip"> No volver a mostrar este aviso</label>
-      <div class="video-actions">
-        <button type="button" class="account-submit" id="video-notice-cancel">Cancelar</button>
-        <button type="button" class="account-submit video-primary" id="video-notice-confirm">Enviar a revisión</button>
-      </div>
+      <h2 id="video-notice-title"></h2>
+      <form class="account-form" id="video-confirm-form">
+        <label>Título del montaje<input id="video-title" maxlength="100" required autofocus></label>
+        <div id="video-publication-notice" hidden>
+          <p>Si un administrador aprueba tu video, se publicará en la Galería de Anástasi y cualquier visitante podrá verlo.</p>
+          <label class="video-notice-checkbox"><input type="checkbox" id="video-notice-skip"> No volver a mostrar este aviso</label>
+        </div>
+        <div class="video-actions">
+          <button type="button" class="account-submit" id="video-notice-cancel">Cancelar</button>
+          <button type="submit" class="account-submit video-primary" id="video-notice-confirm"></button>
+        </div>
+      </form>
     </dialog>
   </main>
 </body>

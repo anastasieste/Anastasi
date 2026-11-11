@@ -1,7 +1,7 @@
 import { carouselImages, carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.2';
 import { CinematicCarousel } from './components/carousel.js';
-import { renderSquads, setupGallery } from './components/collections.js';
-import { account, formMessage, initializeAccountForms, submitAccountForm, videoPlayback, watchMemberSession } from './account.js';
+import { renderSquads, setupGallery } from './components/collections.js?v=1.7';
+import { account, formMessage, initializeAccountForms, submitAccountForm, videoCover, videoPlayback, watchMemberSession } from './account.js?v=1.7';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
 
@@ -14,10 +14,20 @@ account.squadCounts().then(counts => {
   });
   renderSquads(document.querySelector('#squad-list'), squads);
 }).catch(() => {});
-const addPublishedVideos = setupGallery(galleryItems);
-account.publicVideos().then(items => addPublishedVideos(items.map(item => ({
-  type: 'video', title: item.title, src: videoPlayback(item.id), publishedAt: item.published_at,
-})))).catch(() => {});
+const showPublishedVideos = setupGallery(galleryItems);
+let galleryVersion = 0;
+async function refreshGallery() {
+  const version = ++galleryVersion;
+  const items = await account.publicVideos().catch(() => []);
+  if (version !== galleryVersion) return;
+  showPublishedVideos(items.map(item => ({
+    type: 'video', title: item.title, src: videoPlayback(item.id), thumbnail: item.has_cover ? videoCover(item.id) : null,
+  })));
+}
+refreshGallery();
+window.addEventListener('hashchange', () => { if (location.hash === '#galeria') refreshGallery(); });
+window.addEventListener('pageshow', event => { if (event.persisted) refreshGallery(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && location.hash === '#galeria') refreshGallery(); });
 document.querySelector('#year').textContent = new Date().getFullYear();
 
 const { nav, toggle, desktop, closeMenu } = setupSiteNavigation(document.querySelector('.header'));

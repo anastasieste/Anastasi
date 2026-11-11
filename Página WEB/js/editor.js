@@ -1,11 +1,12 @@
-import { account, formMessage } from './account.js';
+import { account, formMessage } from './account.js?v=1.7';
+import { captureVideoCover } from './video-cover.js';
 import { defaultAfter, defaultBefore, formatTime, maxSourceDuration, mergedRanges, parseTime, validEvent } from './video-timeline.js';
 
 const byId = id => document.getElementById(id);
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 async function upload(blob, title, state, onProgress) {
-  if (!state.id) Object.assign(state, await account.videoStart(title, blob.size));
+  if (!state.id) Object.assign(state, await account.videoStart(title, blob.size, state.cover));
   let result = { received: state.received || 0 };
   let attempts = 0;
   while (!result.submitted) {
@@ -50,12 +51,13 @@ export function setupEditor(profile) {
   const progress = byId('video-progress');
   const publish = byId('video-submit');
   const download = byId('video-export');
-  const add = byId('video-new');
   const remove = byId('video-remove');
   const notice = byId('video-notice');
   const noticeSkip = byId('video-notice-skip');
+  const publicationNotice = byId('video-publication-notice');
   const draftKey = 'anastasi.editor.draft.' + profile.callsign;
   let file, sourceUrl, duration = 0, events = [], selected, busy = false, cached, submitted = false, submitting = false;
+  let montageTitle = '', sendToReview = false;
   let transfer = {};
   let ranges = [];
 
@@ -68,7 +70,7 @@ export function setupEditor(profile) {
   }
   function saveDraft() {
     if (!duration) return;
-    try { localStorage.setItem(draftKey, JSON.stringify({ source: signature(), events, title: titleInput.value })); }
+    try { localStorage.setItem(draftKey, JSON.stringify({ source: signature(), events, title: montageTitle })); }
     catch { /* El almacenamiento local es opcional. */ }
   }
   function draft() {
@@ -83,10 +85,10 @@ export function setupEditor(profile) {
     if (marker && duration) marker.style.left = Math.min(99.5, player.currentTime * 100000 / duration) + '%';
   }
   function controls() {
-    fileInput.disabled = titleInput.disabled = busy;
-    add.disabled = fieldset.disabled = busy || !duration;
-    download.disabled = busy || !ranges.length;
-    publish.disabled = busy || submitting || submitted || !ranges.length || !titleInput.value.trim();
+    fileInput.disabled = busy || submitting;
+    fieldset.disabled = busy || submitting || !duration;
+    download.disabled = busy || submitting || !ranges.length;
+    publish.disabled = busy || submitting || submitted || !ranges.length;
     list.querySelectorAll('button').forEach(button => { button.disabled = busy; });
   }
   function trackEvents() {
@@ -133,7 +135,8 @@ export function setupEditor(profile) {
         player.pause();
         player.currentTime = item.start / 1000;
         edit(item);
-        list.querySelector('[aria-pressed=true]')?.focus();
+        fields.type.focus({ preventScroll: true });
+        form.scrollIntoView({ block: 'nearest' });
       });
       entry.append(button);
       list.append(entry);
@@ -154,8 +157,8 @@ export function setupEditor(profile) {
     trackEvents();
     formMessage(form, '');
   }
-  function changed(reencode = true) {
-    if (reencode) cached = undefined;
+  function changed() {
+    cached = undefined;
     submitted = false;
     transfer = {};
     progress.hidden = true;
@@ -170,7 +173,7 @@ export function setupEditor(profile) {
     file = sourceUrl = undefined;
     duration = 0;
     events = [];
-    titleInput.value = '';
+    montageTitle = '';
     byId('video-source-name').textContent = 'Duración máxima: 20 minutos';
     edit();
     changed();
@@ -196,7 +199,7 @@ export function setupEditor(profile) {
     duration = length;
     const saved = draft();
     events = saved?.events.filter(item => item?.id && validEvent(item, duration)) ?? [];
-    titleInput.value = saved?.title ?? file.name.replace(/\.[^.]+$/, '').slice(0, 100);
+    montageTitle = saved?.title ?? file.name.replace(/\.[^.]+$/, '').slice(0, 100);
     edit();
     if (saved && events.length) message('Borrador recuperado.');
   });
@@ -209,16 +212,15 @@ export function setupEditor(profile) {
   fields.type.addEventListener('change', eventType);
   byId('video-mark-start').addEventListener('click', () => { fields.start.value = formatTime(player.currentTime * 1000); });
   byId('video-mark-end').addEventListener('click', () => { fields.end.value = formatTime(player.currentTime * 1000); });
-  add.addEventListener('click', () => { edit(); fields.type.focus(); });
   remove.addEventListener('click', () => {
     events = events.filter(item => item.id !== selected);
     changed();
     edit();
-    add.focus();
+    fields.type.focus();
   });
   form.addEventListener('submit', event => {
     event.preventDefault();
-    if (busy || !duration) return;
+    if (busy || submitting || !duration) return;
     const type = fields.type.value;
     const start = parseTime(fields.start.value);
     const item = {
@@ -231,30 +233,35 @@ export function setupEditor(profile) {
     }
     events = [...events.filter(entry => entry.id !== item.id), item].sort((a, b) => a.start - b.start);
     changed();
-    edit(item);
+    edit();
     formMessage(form, 'Evento guardado.');
   });
-  titleInput.addEventListener('input', () => changed(false));
 
-  async function exportMontage(send) {
+  async function exportMontage(send, hideNotice) {
     if (!file || !ranges.length || busy || (send && submitted)) return;
     busy = true;
     player.pause();
     progress.hidden = true;
     controls();
     try {
+      if (hideNotice) await account.videoNotice(false).catch(() => {});
       if (!cached) {
         message('Preparando video…');
         const { renderVideo } = await import('./video-render.js');
         const height = Math.max(2, Math.floor(Math.min(720, player.videoHeight) / 2) * 2);
         cached = await renderVideo(file, ranges, height, message);
       }
-      const title = titleInput.value.trim() || 'Montaje de Anástasi';
       if (send) {
+        if (!('cover' in transfer)) {
+          message('Preparando carátula…');
+          const url = URL.createObjectURL(cached);
+          try { transfer.cover = await captureVideoCover(url); }
+          finally { URL.revokeObjectURL(url); }
+        }
         progress.value = 0;
         progress.hidden = false;
         message('Subiendo video…');
-        await upload(cached, title, transfer, percent => {
+        await upload(cached, montageTitle, transfer, percent => {
           progress.value = percent;
           message('Subiendo video… ' + percent + ' %');
         });
@@ -263,7 +270,7 @@ export function setupEditor(profile) {
       } else {
         const link = document.createElement('a');
         link.href = URL.createObjectURL(cached);
-        link.download = title + '.mp4';
+        link.download = montageTitle + '.mp4';
         document.body.append(link);
         link.click();
         link.remove();
@@ -277,24 +284,40 @@ export function setupEditor(profile) {
       controls();
     }
   }
-  download.addEventListener('click', () => exportMontage(false));
-  publish.addEventListener('click', async () => {
+  async function confirmMontage(send) {
+    if (busy || submitting || !ranges.length) return;
     submitting = true;
     controls();
     try {
-      if (transfer.id || !await account.videoNotice()) await exportMontage(true);
-      else {
-        noticeSkip.checked = false;
-        notice.showModal();
-      }
-    } catch (error) { message(error.message, true); }
-    finally { submitting = false; controls(); }
-  });
+      sendToReview = send;
+      const label = send ? 'Enviar a revisión' : 'Exportar MP4';
+      byId('video-notice-title').textContent = label;
+      byId('video-notice-confirm').textContent = label;
+      publicationNotice.hidden = !send || !await account.videoNotice().catch(() => true);
+      noticeSkip.checked = false;
+      titleInput.setCustomValidity('');
+      titleInput.value = montageTitle || 'Montaje de Anástasi';
+      notice.showModal();
+      titleInput.select();
+    } finally { submitting = false; controls(); }
+  }
+  download.addEventListener('click', () => confirmMontage(false));
+  publish.addEventListener('click', () => confirmMontage(true));
   byId('video-notice-cancel').addEventListener('click', () => notice.close());
-  byId('video-notice-confirm').addEventListener('click', async () => {
+  titleInput.addEventListener('input', () => titleInput.setCustomValidity(''));
+  byId('video-confirm-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const title = titleInput.value.trim();
+    if (!title) {
+      titleInput.setCustomValidity('Escribe el título del montaje.');
+      titleInput.reportValidity();
+      return;
+    }
+    if (title !== montageTitle && transfer.id) transfer = { cover: transfer.cover };
+    montageTitle = title;
+    saveDraft();
     notice.close();
-    if (noticeSkip.checked) await account.videoNotice(false).catch(() => {});
-    await exportMontage(true);
+    exportMontage(sendToReview, !publicationNotice.hidden && noticeSkip.checked);
   });
   window.addEventListener('beforeunload', event => {
     if (!busy) return;

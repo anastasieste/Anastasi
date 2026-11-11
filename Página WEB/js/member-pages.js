@@ -1,4 +1,4 @@
-import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, videoPlayback, watchMemberSession } from './account.js';
+import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, videoPlayback, watchMemberSession } from './account.js?v=1.7';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
 import { galleryItems } from './data/content.js?v=1.2';
@@ -344,11 +344,10 @@ async function start() {
     if (page === 'editor') {
       const access = await account.videoEditorAccess();
       if (!access.allowed) {
-        status.textContent = 'El Editor de video está en prueba para administradores.';
+        status.textContent = 'El Editor requiere una membresía activa.';
         return;
       }
-      (await import('./editor.js')).setupEditor(profile);
-      document.querySelector('#editor-pilot').hidden = !access.pilot;
+      (await import('./editor.js?v=1.7')).setupEditor(profile);
     }
     if (page === 'profile') {
       if (id === null) await renderOwnProfile();

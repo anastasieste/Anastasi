@@ -1,14 +1,22 @@
-import { account, videoPlayback } from './account.js';
+import { account, videoPlayback } from './account.js?v=1.7';
 
 export function setupVideoReview() {
   const list = document.querySelector('#admin-video-list');
   const status = document.querySelector('#admin-video-status');
   const panel = document.querySelector('#admin-video-section');
+  const confirmation = document.querySelector('#video-decision');
   const tabs = [...document.querySelectorAll('[data-admin-section]')];
   const memberPanels = ['solicitudes', 'admin-members-section'].map(id => document.getElementById(id));
   const date = new Intl.DateTimeFormat('es-PR', { dateStyle: 'medium', timeStyle: 'short' });
   let enabled = false;
   let version = 0;
+  let confirmDecision;
+
+  confirmation.addEventListener('close', () => {
+    const action = confirmDecision;
+    confirmDecision = undefined;
+    if (enabled && !panel.hidden && confirmation.returnValue === 'confirm') action?.();
+  });
 
   function clearPlayback() {
     for (const video of list.querySelectorAll('video')) {
@@ -22,7 +30,12 @@ export function setupVideoReview() {
     memberPanels.forEach(section => { section.hidden = videos; });
     tabs.forEach(button => button.setAttribute('aria-pressed', String((button.dataset.adminSection === 'videos') === videos)));
     if (videos) load();
-    else { version++; clearPlayback(); list.replaceChildren(); }
+    else {
+      version++;
+      if (confirmation.open) confirmation.close('cancel');
+      clearPlayback();
+      list.replaceChildren();
+    }
   }
   function create(tag, text, className) {
     const element = document.createElement(tag);
@@ -67,17 +80,25 @@ export function setupVideoReview() {
       reject.disabled = busy || record.decision === 'approved';
     }
     updateDecisionButtons(false);
-    for (const [button, decision, verb] of [[approve, 'approved', 'aprobar'], [reject, 'rejected', 'rechazar']]) {
-      button.addEventListener('click', async () => {
-        if (!window.confirm(`¿Quieres ${verb} «${record.title}»?`)) return;
-        updateDecisionButtons(true);
-        message.textContent = 'Guardando decisión…';
-        try {
-          await account.videoDecision(record.id, decision);
-          if (enabled && !panel.hidden) await load(decision === 'approved' ? 'Video aprobado y publicado.' : 'Video rechazado.');
-        } catch (error) {
-          message.textContent = error.message;
-        } finally { updateDecisionButtons(false); }
+    for (const [button, decision] of [[approve, 'approved'], [reject, 'rejected']]) {
+      button.addEventListener('click', () => {
+        confirmation.returnValue = '';
+        const label = button.textContent;
+        confirmation.querySelector('h2').textContent = label + ' video';
+        confirmation.querySelector('p').textContent = record.title;
+        confirmation.querySelector('#video-decision-confirm').textContent = label;
+        confirmDecision = async () => {
+          if (!details.isConnected) return;
+          updateDecisionButtons(true);
+          message.textContent = 'Guardando decisión…';
+          try {
+            await account.videoDecision(record.id, decision);
+            if (enabled && !panel.hidden) await load(decision === 'approved' ? 'Video aprobado y publicado.' : 'Video rechazado.');
+          } catch (error) {
+            message.textContent = error.message;
+          } finally { updateDecisionButtons(false); }
+        };
+        confirmation.showModal();
       });
     }
     actions.append(view, approve, reject);
