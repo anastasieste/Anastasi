@@ -7,7 +7,7 @@ const storageObjects = '/storage/v1/object';
 const avatarBucket = '/member-avatars';
 export const accountsReady = /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) && publishableKey.startsWith('sb_publishable_');
 
-async function request(path, { body, method = body ? 'POST' : 'GET', token, file, image } = {}) {
+async function request(path, { body, method = body ? 'POST' : 'GET', token, file, image, chunk, offset } = {}) {
   if (!accountsReady) throw new Error('El servicio de cuentas todavía no está conectado.');
   let response;
   try {
@@ -17,9 +17,10 @@ async function request(path, { body, method = body ? 'POST' : 'GET', token, file
         apikey: publishableKey,
         ...(body && { 'Content-Type': 'application/json' }),
         ...(file && { 'Content-Type': file.type, 'x-upsert': 'true' }),
+        ...(chunk && { 'Content-Type': 'application/octet-stream', 'X-Video-Offset': String(offset) }),
         ...(token && { Authorization: 'Bearer ' + token }),
       },
-      body: file || (body ? JSON.stringify(body) : undefined),
+      body: chunk || file || (body ? JSON.stringify(body) : undefined),
       cache: 'no-store',
       redirect: 'error',
     });
@@ -27,10 +28,12 @@ async function request(path, { body, method = body ? 'POST' : 'GET', token, file
     throw new Error('No se pudo conectar. Intenta de nuevo en unos minutos.');
   }
   if (!response.ok) {
-    if (response.status === 429) throw new Error('Has hecho varios intentos. Espera un momento y vuelve a intentar.');
-    const error = new Error('No se pudo completar la solicitud. Revisa los datos e inténtalo de nuevo.');
-    error.status = response.status;
     const failure = await response.json().catch(() => ({}));
+    const videoMessage = path.startsWith('/functions/v1/member-video/') && typeof failure.message === 'string' ? failure.message : '';
+    const error = new Error(videoMessage || (response.status === 429
+      ? 'Has hecho varios intentos. Espera un momento y vuelve a intentar.'
+      : 'No se pudo completar la solicitud. Revisa los datos e inténtalo de nuevo.'));
+    error.status = response.status;
     error.code = failure.code || failure.error_code;
     throw error;
   }
@@ -182,6 +185,15 @@ export const account = {
   managementSnapshot: () => rpc('portal_management_snapshot'),
   manageAccounts: changes => rpc('portal_manage_accounts', { changes }),
   decide: (application_id, approved, review_note) => rpc('decide_member_application', { application_id, approved, review_note }),
+  videoNotice: show_notice => rpc('portal_video_notice', { show_notice }),
+  profileVideos: member_id => rpc('portal_profile_videos', { member_id }),
+  publicVideos: () => request('/rest/v1/rpc/portal_public_videos', { body: {} }),
+  videoQueue: () => rpc('portal_video_queue'),
+  videoStart: (title, bytes) => memberRequest('/functions/v1/member-video/start', { body: { title, bytes } }),
+  videoOffset: id => memberRequest('/functions/v1/member-video/upload/' + id, { method: 'POST' }),
+  videoChunk: (id, chunk, offset) => memberRequest('/functions/v1/member-video/upload/' + id, { method: 'PUT', chunk, offset }),
+  videoPreview: id => memberRequest('/functions/v1/member-video/preview/' + id, { method: 'POST' }),
+  videoDecision: (id, decision) => memberRequest('/functions/v1/member-video/decide/' + id, { body: { decision } }),
 
   async squadCounts() {
     if (!accountsReady) return new Map();
@@ -189,6 +201,12 @@ export const account = {
     return new Map(rows.map(row => [row.code, Number(row.member_count)]));
   },
 };
+
+export function videoPlayback(id, ticket) {
+  const playback = new URL('/functions/v1/member-video/play/' + encodeURIComponent(id), url);
+  if (ticket) playback.searchParams.set('ticket', ticket);
+  return playback.href;
+}
 
 export function watchMemberSession(callback) {
   window.addEventListener('storage', event => {

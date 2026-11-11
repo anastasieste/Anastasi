@@ -1,7 +1,7 @@
 import { carouselImages, carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.2';
 import { CinematicCarousel } from './components/carousel.js';
 import { renderSquads, setupGallery } from './components/collections.js';
-import { account, formMessage, initializeAccountForms, submitAccountForm, watchMemberSession } from './account.js';
+import { account, formMessage, initializeAccountForms, submitAccountForm, videoPlayback, watchMemberSession } from './account.js';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
 
@@ -14,7 +14,10 @@ account.squadCounts().then(counts => {
   });
   renderSquads(document.querySelector('#squad-list'), squads);
 }).catch(() => {});
-setupGallery(galleryItems);
+const addPublishedVideos = setupGallery(galleryItems);
+account.publicVideos().then(items => addPublishedVideos(items.map(item => ({
+  type: 'video', title: item.title, src: videoPlayback(item.id), publishedAt: item.published_at,
+})))).catch(() => {});
 document.querySelector('#year').textContent = new Date().getFullYear();
 
 const { nav, toggle, desktop, closeMenu } = setupSiteNavigation(document.querySelector('.header'));
