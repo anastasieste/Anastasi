@@ -6,6 +6,7 @@ const driveApi = "https://www.googleapis.com/drive/v3/files";
 const driveUpload = "https://www.googleapis.com/upload/drive/v3/files";
 const chunkSize = 2 * 1024 * 1024;
 const maxSize = 100 * 1024 * 1024;
+const outroName = "FinalVideoLogo.mp4";
 const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 const encoder = new TextEncoder();
 const cors = {
@@ -27,7 +28,7 @@ type Video = {
   created_at: string;
   status: "uploading" | "pending" | "approved" | "rejected" | "abandoned";
 };
-type DriveFile = { id: string; size?: string; mimeType?: string; parents?: string[]; trashed?: boolean };
+type DriveFile = { id: string; name?: string; size?: string; mimeType?: string; parents?: string[]; trashed?: boolean };
 
 class RequestError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -73,36 +74,40 @@ async function requireMember(actor: string, admin = false) {
     throw new RequestError(403, admin ? "Se requiere una cuenta de administrador." : "Se requiere una membresía activa.");
   }
 }
-let cachedToken: { value: string; until: number } | undefined;
-let requestingToken: Promise<string> | undefined;
-async function driveToken() {
-  if (cachedToken && cachedToken.until > Date.now()) return cachedToken.value;
-  requestingToken ??= (async () => {
-    const broker = configured("VIDEO_DRIVE_TOKEN_URL");
-    if (!/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec$/.test(broker)) throw new Error("Invalid token endpoint");
-    const response = await fetch(broker, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret: configured("VIDEO_DRIVE_TOKEN_SECRET") }),
-      signal: AbortSignal.timeout(15000),
-    });
-    const payload = await response.json();
-    if (!response.ok || typeof payload.token !== "string" || !payload.token) {
-      throw new RequestError(503, "No se pudo conectar con el almacén de videos.");
-    }
-    cachedToken = { value: payload.token, until: Date.now() + 2 * 60 * 1000 };
-    return payload.token as string;
-  })().finally(() => { requestingToken = undefined; });
-  return requestingToken;
+function driveClient(urlKey: string, secretKey: string) {
+  let cachedToken: { value: string; until: number } | undefined;
+  let requestingToken: Promise<string> | undefined;
+  async function token() {
+    if (cachedToken && cachedToken.until > Date.now()) return cachedToken.value;
+    requestingToken ??= (async () => {
+      const broker = configured(urlKey);
+      if (!/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec$/.test(broker)) throw new Error("Invalid token endpoint");
+      const response = await fetch(broker, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret: configured(secretKey) }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const payload = await response.json();
+      if (!response.ok || typeof payload.token !== "string" || !payload.token) {
+        throw new RequestError(503, "No se pudo conectar con el almacén de videos.");
+      }
+      cachedToken = { value: payload.token, until: Date.now() + 2 * 60 * 1000 };
+      return payload.token as string;
+    })().finally(() => { requestingToken = undefined; });
+    return requestingToken;
+  }
+  return async (url: string, options: RequestInit = {}) => {
+    const access = await token();
+    const headers = new Headers(options.headers);
+    headers.set("Authorization", "Bearer " + access);
+    const response = await fetch(url, { ...options, headers, redirect: "manual" });
+    if (response.status === 401 && cachedToken?.value === access) cachedToken = undefined;
+    return response;
+  };
 }
-async function drive(url: string, options: RequestInit = {}) {
-  const token = await driveToken();
-  const headers = new Headers(options.headers);
-  headers.set("Authorization", "Bearer " + token);
-  const response = await fetch(url, { ...options, headers, redirect: "manual" });
-  if (response.status === 401) cachedToken = undefined;
-  return response;
-}
+const drive = driveClient("VIDEO_DRIVE_TOKEN_URL", "VIDEO_DRIVE_TOKEN_SECRET");
+const readDrive = driveClient("PHOTO_TOKEN_URL", "PHOTO_TOKEN_SECRET");
 function driveError() {
   return new RequestError(502, "El almacén de videos no respondió. Intenta nuevamente.");
 }
@@ -111,6 +116,38 @@ async function fileInfo(driveId: string): Promise<DriveFile | null> {
   if (response.status === 404) return null;
   if (!response.ok) throw driveError();
   return await response.json();
+}
+
+async function outro(actor: string) {
+  await requireMember(actor);
+  const folder = configured("VIDEO_OUTRO_FOLDER");
+  if (!/^[-\w]+$/.test(folder)) throw driveError();
+  const params = new URLSearchParams({
+    q: `'${folder}' in parents and trashed = false and name = '${outroName}' and mimeType = 'video/mp4'`,
+    fields: "nextPageToken,files(id,name,size,mimeType,parents,trashed)",
+    pageSize: "100",
+  });
+  let match: DriveFile | undefined;
+  let pageToken: string | undefined;
+  do {
+    if (pageToken) params.set("pageToken", pageToken);
+    const response = await readDrive(driveApi + "?" + params);
+    if (!response.ok) throw driveError();
+    const page = await response.json() as { nextPageToken?: string; files?: DriveFile[] };
+    for (const file of page.files ?? []) {
+      if (file.trashed || !file.parents?.includes(folder) || file.mimeType !== "video/mp4" || file.name !== outroName) continue;
+      if (match) throw new RequestError(503, "Hay más de un FinalVideoLogo.mp4 en la carpeta del Editor.");
+      match = file;
+    }
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+  const size = Number(match?.size);
+  if (!match || !/^[-\w]+$/.test(match.id) || !Number.isSafeInteger(size) || size < 1 || size > maxSize) {
+    throw new RequestError(503, "El video de cierre no está disponible. Intenta nuevamente.");
+  }
+  const response = await readDrive(driveApi + "/" + match.id + "?alt=media");
+  if (!response.ok || !response.body) throw driveError();
+  return new Response(response.body, { headers: { ...cors, "Content-Type": "video/mp4", "X-Content-Type-Options": "nosniff" } });
 }
 async function availableInGallery(record: Video) {
   if (record.status !== "approved") return false;
@@ -345,7 +382,7 @@ Deno.serve(async request => {
   try {
     if (action === "cleanup" && request.method === "POST") return await cleanup(request);
     if (action === "gallery" && !id && request.method === "GET") return await gallery();
-    if (extra || (!["start", "access"].includes(action) && !uuid.test(id))) throw new RequestError(404, "Ruta no disponible.");
+    if (extra || (!["start", "access", "outro"].includes(action) && !uuid.test(id))) throw new RequestError(404, "Ruta no disponible.");
     if (action === "cover" && request.method === "GET") {
       const record = await rpc<Video | null>("get", { id });
       if (record) return await cover(record);
@@ -358,6 +395,7 @@ Deno.serve(async request => {
     }
     const actor = await identify(request);
     if (action === "access" && !id && request.method === "POST") return json({ allowed: await rpc<boolean>("eligible", { actor }) });
+    if (action === "outro" && !id && request.method === "GET") return await outro(actor);
     if (action === "start" && !id && request.method === "POST") return await beginUpload(request, actor);
     if (action === "upload" && ["POST", "PUT"].includes(request.method)) return await transfer(request, await ownUpload(id, actor), actor);
     if (["preview", "decide"].includes(action) && request.method === "POST") {
