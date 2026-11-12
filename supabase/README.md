@@ -57,6 +57,7 @@ Con cuentas de prueba autorizadas, verifica registro, confirmación, aviso, apro
 4. Configura los secretos de la función: `VIDEO_DRIVE_TOKEN_URL` con la URL `/exec`, `VIDEO_DRIVE_TOKEN_SECRET` con el mismo secreto del script, los tres IDs `VIDEO_DRIVE_PENDING`, `VIDEO_DRIVE_APPROVED`, `VIDEO_DRIVE_REJECTED` y dos secretos aleatorios e independientes `VIDEO_SERVICE_SECRET` y `VIDEO_CLEANUP_SECRET`. Nunca los incluyas en Pages.
 5. En Vault crea `video_cleanup_url` con la URL de `member-video/cleanup` y `video_cleanup_secret` con el mismo valor que el secreto de la función. Ejecuta `video-cleanup.sql` con Cron y pg_net activos. El trabajo por hora elimina definitivamente los videos rechazados que cumplan siete días y conserva su auditoría. También retira subidas incompletas vencidas.
 6. Ejecuta `npm ci --ignore-scripts` y `node scripts/package-pages.mjs` para preparar la versión publicable. Comprueba los permisos con `tests/member-videos.sql` y verifica el flujo completo con un montaje de prueba en Drive. Los miembros con cuenta aprobada pueden editar y enviar montajes. La revisión requiere una cuenta administradora.
+7. Configura `VIDEO_OUTRO_FOLDER` con el ID de `Mi unidad/Editor/Aplicar a video`. Conserva un solo `FinalVideoLogo.mp4` en esa carpeta. La función `member-video` lee el archivo con el mismo conector de solo lectura de las fotografías. El Editor lo añade al enviar a revisión y conserva la exportación local por separado.
 
 ## Fotografías del sitio
 

@@ -7,7 +7,7 @@ const storageObjects = '/storage/v1/object';
 const avatarBucket = '/member-avatars';
 export const accountsReady = /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) && publishableKey.startsWith('sb_publishable_');
 
-async function request(path, { body, method = body ? 'POST' : 'GET', token, file, image, chunk, offset } = {}) {
+async function request(path, { body, method = body ? 'POST' : 'GET', token, file, binary, chunk, offset } = {}) {
   if (!accountsReady) throw new Error('El servicio de cuentas todavía no está conectado.');
   let response;
   try {
@@ -37,7 +37,7 @@ async function request(path, { body, method = body ? 'POST' : 'GET', token, file
     error.code = failure.code || failure.error_code;
     throw error;
   }
-  return image ? response.blob() : response.json().catch(() => ({}));
+  return binary ? response.blob() : response.json().catch(() => ({}));
 }
 
 function storedSession() {
@@ -175,7 +175,7 @@ export const account = {
   directoryProfile: async member_id => (await rpc('portal_directory_profile', { member_id }))[0],
   editMember: (member_id, member_callsign, member_squad) =>
     rpc('portal_admin_edit_member', { member_id, member_callsign, member_squad }),
-  avatar: id => memberRequest(storageObjects + '/authenticated' + avatarBucket + '/' + avatarObject(id), { image: true }),
+  avatar: id => memberRequest(storageObjects + '/authenticated' + avatarBucket + '/' + avatarObject(id), { binary: true }),
   uploadAvatar: (id, file) => memberRequest(storageObjects + avatarBucket + '/' + avatarObject(id), { method: 'POST', file }),
   removeAvatar: id => memberRequest(storageObjects + avatarBucket, {
     method: 'DELETE', body: { prefixes: [avatarObject(id)] },
@@ -190,6 +190,7 @@ export const account = {
   publicVideos: () => request('/functions/v1/member-video/gallery'),
   videoQueue: () => rpc('portal_video_queue'),
   videoEditorAccess: () => memberRequest('/functions/v1/member-video/access', { method: 'POST' }),
+  videoOutro: () => memberRequest('/functions/v1/member-video/outro', { binary: true }),
   videoStart: (title, bytes, cover) => memberRequest('/functions/v1/member-video/start', { body: { title, bytes, cover } }),
   videoOffset: id => memberRequest('/functions/v1/member-video/upload/' + id, { method: 'POST' }),
   videoChunk: (id, chunk, offset) => memberRequest('/functions/v1/member-video/upload/' + id, { method: 'PUT', chunk, offset }),
