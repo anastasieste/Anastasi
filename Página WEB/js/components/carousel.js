@@ -26,8 +26,8 @@ export class CinematicCarousel {
   }
 
   build() {
-    // Cinco posiciones reciclables permiten un loop continuo, incluso con dos imágenes.
-    const positions = this.images.length > 1 ? [-2, -1, 0, 1, 2] : this.images.length ? [0] : [];
+    // Empieza por el centro y recicla las mismas tarjetas, incluso con una sola foto.
+    const positions = this.images.length ? [0, 1, -1, 2, -2] : [];
     for (const position of positions) {
       const element = document.createElement('figure');
       element.className = 'carousel-card';
@@ -48,6 +48,8 @@ export class CinematicCarousel {
       const reflected = document.createElement('img');
       reflected.alt = '';
       reflected.draggable = false;
+      reflected.loading = 'lazy';
+      reflected.fetchPriority = 'low';
       const reflectedFrame = frame.cloneNode(false);
       reflectedFrame.append(reflected);
       reflection.append(reflectedFrame);
@@ -65,16 +67,18 @@ export class CinematicCarousel {
       });
     }
     this.root.hidden = !this.images.length;
-    this.arrows.forEach(button => { button.hidden = this.images.length < 2; });
+    this.arrows.forEach(button => { button.hidden = !this.images.length; });
   }
 
   fill(card, index) {
     const item = this.images[index];
-    card.img.src = item.src;
     card.img.alt = item.alt;
     card.img.loading = Math.abs(card.position) < 2 ? 'eager' : 'lazy';
     card.img.fetchPriority = card.position === 0 ? 'high' : 'auto';
-    card.reflected.src = item.src;
+    if (card.img.getAttribute('src') !== item.src) {
+      card.img.src = item.src;
+      card.reflected.src = item.src;
+    }
   }
 
   position(card) {
@@ -88,13 +92,13 @@ export class CinematicCarousel {
   }
 
   move(direction, manual = false) {
-    if (!direction || this.busy || this.images.length < 2) return;
+    if (!direction || this.busy || !this.images.length) return;
     clearTimeout(this.timer);
     this.busy = true;
     direction = Math.sign(direction);
     this.index = modulo(this.index + direction, this.images.length);
     // Evita que el foco quede atrapado en una diapositiva que pasa a estar oculta.
-    if (this.stage.contains(document.activeElement)) this.root.focus({ preventScroll: true });
+    if (this.cards.some(card => card.button === document.activeElement)) this.root.focus({ preventScroll: true });
     for (const card of this.cards) {
       card.position -= direction;
       this.position(card);
@@ -120,7 +124,7 @@ export class CinematicCarousel {
 
   schedule() {
     clearTimeout(this.timer);
-    if (this.motion.matches || this.reasons.size || this.busy || this.images.length < 2) return;
+    if (this.motion.matches || this.reasons.size || this.busy || !this.images.length) return;
     const delay = this.resumeAt ? Math.max(0, this.resumeAt - performance.now()) : this.interval;
     this.timer = setTimeout(() => {
       this.resumeAt = 0;
@@ -158,7 +162,7 @@ export class CinematicCarousel {
       }
     });
     this.on(this.stage, 'pointerdown', event => {
-      if (!event.isPrimary || event.pointerType !== 'touch' || event.button !== 0 || this.images.length < 2) return;
+      if (!event.isPrimary || event.pointerType !== 'touch' || event.button !== 0 || !this.images.length) return;
       this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
       this.setReason('drag', true);
     });
