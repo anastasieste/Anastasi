@@ -12,8 +12,8 @@
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="preload" as="fetch" href="https://ljobbkfieuzhwjcmbctx.supabase.co/functions/v1/site-photos" crossorigin="anonymous">
-  <link rel="stylesheet" href="css/styles.css?v=1.8">
-  <script type="module" src="js/app.js?v=1.9"></script>
+  <link rel="stylesheet" href="css/styles.css?v=1.11">
+  <script type="module" src="js/app.js?v=1.11"></script>
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -92,6 +92,14 @@
       <div class="portal-actions"><button type="button" data-portal-view="login">Volver a iniciar sesión</button></div>
     </div>
     <p class="account-notice" data-account-notice>El servicio de cuentas todavía no está conectado.</p>
+  </dialog>
+  <dialog id="squad-roster-dialog" class="portal-dialog squad-roster-dialog" aria-labelledby="squad-roster-title">
+    <div class="squad-roster-heading">
+      <h2 id="squad-roster-title"></h2>
+      <button class="dialog-close" type="button" autofocus>Cerrar <span aria-hidden="true">×</span></button>
+    </div>
+    <p class="squad-roster-status" role="status"></p>
+    <ul class="squad-roster-list" role="list" aria-label="Integrantes" tabindex="0"></ul>
   </dialog>
   <dialog id="media-dialog" aria-label="Visor de galería"><button class="dialog-close" aria-label="Cerrar visor">Cerrar ×</button><div class="media-content"></div></dialog>
 </body>
