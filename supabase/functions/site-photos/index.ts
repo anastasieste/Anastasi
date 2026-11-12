@@ -16,11 +16,19 @@ type DrivePhoto = {
   imageMediaMetadata?: { width: number; height: number };
 };
 type Photo = { id: string; version: string; width?: number; height?: number };
-type PhotoFolders = { carousel: string; about: string };
+type Section = 'carousel' | 'about';
+type PhotoFolders = Record<Section, string>;
+type PhotoIndex = {
+  photos: Record<Section, Photo[]>;
+  files: Record<Section, Map<string, DrivePhoto>>;
+  expires: number;
+};
 let driveToken: { value: string; expires: number } | undefined;
+let pendingToken: Promise<string> | undefined;
+let photoIndex: PhotoIndex | undefined;
+let pendingIndex: Promise<PhotoIndex> | undefined;
 
-async function accessToken() {
-  if (driveToken && Date.now() < driveToken.expires) return driveToken.value;
+async function requestToken() {
   const endpoint = Deno.env.get('PHOTO_TOKEN_URL');
   const secret = Deno.env.get('PHOTO_TOKEN_SECRET');
   if (!endpoint || !secret) throw new Error('Photo token provider is missing');
@@ -33,20 +41,26 @@ async function accessToken() {
   if (!response.ok) throw new Error('Photo token request failed');
   const { token } = await response.json();
   if (typeof token !== 'string' || !token) throw new Error('Photo token unavailable');
-  driveToken = { value: token, expires: Date.now() + 120000 };
+  driveToken = { value: token, expires: Date.now() + 10 * 60_000 };
   return token;
 }
 
+function accessToken() {
+  if (driveToken && Date.now() < driveToken.expires) return Promise.resolve(driveToken.value);
+  return pendingToken ??= requestToken().finally(() => { pendingToken = undefined; });
+}
+
 async function driveRequest(url: string) {
-  const send = async () => fetch(url, {
-    headers: { Authorization: `Bearer ${await accessToken()}` },
+  const send = (token: string) => fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(15000),
   });
-  const response = await send();
+  const token = await accessToken();
+  const response = await send(token);
   if (response.status !== 401) return response;
   await response.body?.cancel();
-  driveToken = undefined;
-  return send();
+  if (driveToken?.value === token) driveToken = undefined;
+  return send(await accessToken());
 }
 
 function json(body: object, status = 200) {
@@ -60,7 +74,8 @@ async function listPhotos(folders: PhotoFolders) {
     pageSize: '1000',
     orderBy: 'name_natural',
   });
-  const photos: { carousel: Photo[]; about: Photo[] } = { carousel: [], about: [] };
+  const photos: PhotoIndex['photos'] = { carousel: [], about: [] };
+  const indexedFiles: PhotoIndex['files'] = { carousel: new Map(), about: new Map() };
   let pageToken = '';
   do {
     if (pageToken) query.set('pageToken', pageToken);
@@ -70,21 +85,37 @@ async function listPhotos(folders: PhotoFolders) {
     for (const photo of files as DrivePhoto[]) {
       if (!imageTypes.has(photo.mimeType)) continue;
       const entry = { id: photo.id, version: photo.modifiedTime, ...photo.imageMediaMetadata };
-      if (photo.parents?.includes(folders.carousel)) photos.carousel.push(entry);
-      if (photo.parents?.includes(folders.about)) photos.about.push(entry);
+      for (const section of ['carousel', 'about'] as const) {
+        if (!photo.parents?.includes(folders[section])) continue;
+        photos[section].push(entry);
+        indexedFiles[section].set(photo.id, photo);
+      }
     }
     pageToken = nextPageToken;
   } while (pageToken);
-  return json(photos);
+  return { photos, files: indexedFiles, expires: Date.now() + 15_000 };
 }
 
-async function servePhoto(id: string, folder: string) {
+function getPhotoIndex(folders: PhotoFolders) {
+  if (photoIndex && Date.now() < photoIndex.expires) return Promise.resolve(photoIndex);
+  return pendingIndex ??= listPhotos(folders).then(index => {
+    photoIndex = index;
+    return index;
+  }).finally(() => { pendingIndex = undefined; });
+}
+
+async function servePhoto(id: string, folder: string, section: Section, version: string | null) {
   const notFound = () => json({ error: 'Fotografía no disponible.' }, 404);
   if (!validId.test(id)) return notFound();
-  const metadata = await driveRequest(`${drive}/${id}?fields=mimeType,parents,trashed`);
-  if (metadata.status === 404 || metadata.status === 403) return notFound();
-  if (!metadata.ok) throw new Error('Photo metadata unavailable');
-  const photo: DrivePhoto = await metadata.json();
+  // Reusa la comprobación de carpeta que acaba de hacer el listado para esta versión.
+  const cached = photoIndex && Date.now() < photoIndex.expires ? photoIndex.files[section].get(id) : undefined;
+  let photo = cached && cached.modifiedTime === version ? cached : undefined;
+  if (!photo) {
+    const metadata = await driveRequest(`${drive}/${id}?fields=mimeType,parents,trashed`);
+    if (metadata.status === 404 || metadata.status === 403) return notFound();
+    if (!metadata.ok) throw new Error('Photo metadata unavailable');
+    photo = await metadata.json() as DrivePhoto;
+  }
   if (photo.trashed || !photo.parents?.includes(folder) || !imageTypes.has(photo.mimeType)) return notFound();
   const image = await driveRequest(`${drive}/${id}?alt=media`);
   if (image.status === 404 || image.status === 403) return notFound();
@@ -102,10 +133,10 @@ Deno.serve(async request => {
     if (!carousel || !about || !validId.test(carousel) || !validId.test(about)) throw new Error('Photo folders not configured');
     const params = new URL(request.url).searchParams;
     const id = params.get('id');
-    if (id === null) return await listPhotos({ carousel, about });
+    if (id === null) return json((await getPhotoIndex({ carousel, about })).photos);
     const section = params.get('section');
     if (section !== 'carousel' && section !== 'about') return json({ error: 'Sección no disponible.' }, 404);
-    return await servePhoto(id, section === 'carousel' ? carousel : about);
+    return await servePhoto(id, section === 'carousel' ? carousel : about, section, params.get('v'));
   } catch (error) {
     console.error(error instanceof Error ? error.message : 'Photo request failed');
     return json({ error: 'Las fotografías no están disponibles.' }, 503);
