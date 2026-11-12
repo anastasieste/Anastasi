@@ -168,8 +168,8 @@ export const account = {
   changeEmail: email => memberRequest('/auth/v1/user', { method: 'PUT', body: { email } }),
   ownProfile: async () => (await rpc('portal_own_profile'))[0],
   updateProfile: (member_name, bio, details) => rpc('portal_update_profile', { member_name, bio, details }),
-  updatePrivacy: (bio_visible, name_visible, details_visible, activity_visible) =>
-    rpc('portal_update_privacy', { bio_visible, name_visible, details_visible, activity_visible }),
+  updatePrivacy: (bio_visible, name_visible, details_visible, activity_visible, avatar_visible) =>
+    rpc('portal_update_privacy', { bio_visible, name_visible, details_visible, activity_visible, avatar_visible }),
   directory: (squad_filter = null) => rpc('portal_directory', { squad_filter }),
   squads: () => rpc('portal_squads'),
   directoryProfile: async member_id => (await rpc('portal_directory_profile', { member_id }))[0],
@@ -202,7 +202,14 @@ export const account = {
     const rows = await request('/rest/v1/rpc/active_squad_counts', { body: {} });
     return new Map(rows.map(row => [row.code, Number(row.member_count)]));
   },
+  publicSquadRoster: squad_code => request('/rest/v1/rpc/portal_public_squad_roster', { body: { squad_code } }),
 };
+
+export function publicSquadAvatar(squad, callsign) {
+  const picture = new URL('/functions/v1/public-member-avatar', url);
+  picture.search = new URLSearchParams({ squad, callsign });
+  return picture.href;
+}
 
 export function videoPlayback(id, ticket) {
   const playback = new URL('/functions/v1/member-video/play/' + encodeURIComponent(id), url);

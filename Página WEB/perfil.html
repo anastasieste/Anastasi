@@ -7,8 +7,8 @@
   <meta name="referrer" content="no-referrer">
   <title>Mi perfil · Anástasi</title>
   <link rel="icon" href="assets/images/branding/Chango2.png" type="image/png">
-  <link rel="stylesheet" href="css/styles.css?v=1.5">
-  <script type="module" src="js/member-pages.js"></script>
+  <link rel="stylesheet" href="css/styles.css?v=1.11">
+  <script type="module" src="js/member-pages.js?v=1.11"></script>
 </head>
 <body data-member-page="profile">
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -85,8 +85,9 @@
           </section>
           <section id="privacidad" class="member-panel" data-section aria-labelledby="privacy-title" hidden>
             <h2 id="privacy-title">Privacidad</h2>
-            <p>Tu callsign, foto y escuadrón aparecen en el directorio privado. Tu correo se mantiene privado.</p>
+            <p>Tu callsign aparece en Escuadrones. Tu correo se mantiene privado.</p>
             <form id="privacy-form" class="account-form privacy-form" method="post">
+              <label><input type="checkbox" name="show_avatar"> Mostrar mi avatar</label>
               <label><input type="checkbox" name="show_biography"> Mostrar mi biografía</label>
               <label><input type="checkbox" name="show_full_name"> Mostrar mi nombre real</label>
               <label><input type="checkbox" name="show_details"> Mostrar mi información adicional</label>

@@ -1,4 +1,4 @@
-import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, videoPlayback, watchMemberSession } from './account.js?v=1.10';
+import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, videoPlayback, watchMemberSession } from './account.js?v=1.11';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
 import { galleryItems } from './data/content.js?v=1.2';
@@ -47,8 +47,9 @@ const avatarObserver = 'IntersectionObserver' in window && new IntersectionObser
   }
 }, { rootMargin: '120px' });
 
-function avatarFor(member, large = false) {
-  const avatar = node('span', member.callsign.slice(0, 2).toUpperCase(), large ? 'avatar avatar-large' : 'avatar');
+function avatarFor(member, large = false, fallback = false) {
+  const initials = fallback ? member.callsign.slice(0, 2).toUpperCase() : '';
+  const avatar = node('span', initials, large ? 'avatar avatar-large' : 'avatar');
   avatar.setAttribute('aria-hidden', 'true');
   if (member.has_avatar) {
     if (large || !avatarObserver) queueMicrotask(() => showAvatar(avatar, member));
@@ -65,7 +66,8 @@ function memberCards(members) {
   for (const member of members) {
     const card = node('a', '', 'member-tile');
     card.href = 'perfil.html?miembro=' + encodeURIComponent(member.id);
-    card.append(avatarFor(member), node('strong', member.callsign));
+    if (member.has_avatar) card.append(avatarFor(member));
+    card.append(node('strong', member.callsign));
     grid.append(card);
   }
   return grid;
@@ -129,7 +131,12 @@ async function activity(container, memberId, own = false) {
 
 function showIdentity(member, own = false) {
   document.querySelector('.profile-kicker').textContent = own ? 'MI PERFIL' : 'PERFIL DE MIEMBRO';
-  document.querySelector('.profile-avatar').replaceChildren(avatarFor(member, true));
+  const avatar = document.querySelector('.profile-avatar');
+  const show = own || member.has_avatar;
+  avatar.hidden = !show;
+  avatar.parentElement.classList.toggle('profile-banner-no-avatar', !show);
+  if (show) avatar.replaceChildren(avatarFor(member, true, own));
+  else avatar.replaceChildren();
   document.querySelector('.profile-callsign').textContent = member.callsign;
   document.querySelector('.profile-squad').textContent = member.squad;
   const biography = document.querySelector('.profile-bio');
@@ -183,7 +190,7 @@ async function renderOwnProfile() {
     self.has_avatar = true;
     remove.hidden = false;
     avatar.reset();
-    document.querySelector('.profile-avatar').replaceChildren(avatarFor(self, true));
+    document.querySelector('.profile-avatar').replaceChildren(avatarFor(self, true, true));
     formMessage(avatar, 'Foto actualizada.');
   });
   remove.addEventListener('click', async () => {
@@ -194,7 +201,7 @@ async function renderOwnProfile() {
       await account.removeAvatar(self.id);
       self.has_avatar = false;
       remove.hidden = true;
-      document.querySelector('.profile-avatar').replaceChildren(avatarFor(self, true));
+      document.querySelector('.profile-avatar').replaceChildren(avatarFor(self, true, true));
       avatar.elements.avatar.focus();
       formMessage(avatar, 'Foto eliminada.');
     } catch (error) { formMessage(avatar, error.message, true); }
@@ -230,10 +237,11 @@ async function renderOwnProfile() {
   });
 
   const privacy = document.querySelector('#privacy-form');
-  const fields = ['show_biography', 'show_full_name', 'show_details', 'show_activity'];
+  const fields = ['show_biography', 'show_full_name', 'show_details', 'show_activity', 'show_avatar'];
   for (const field of fields) privacy.elements[field].checked = self[field];
   bindForm(privacy, 'Guardando privacidad…', async () => {
     await account.updatePrivacy(...fields.map(field => privacy.elements[field].checked));
+    loadedSquad = false;
     formMessage(privacy, 'Preferencias guardadas.');
   });
   const videoPrivacy = document.querySelector('#video-privacy-form');
