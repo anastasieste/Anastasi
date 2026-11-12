@@ -1,4 +1,4 @@
-import { account, formMessage } from './account.js?v=1.7';
+import { account, formMessage } from './account.js?v=1.10';
 import { captureVideoCover } from './video-cover.js';
 import { defaultAfter, defaultBefore, formatTime, maxSourceDuration, mergedRanges, parseTime, validEvent } from './video-timeline.js';
 
@@ -56,7 +56,7 @@ export function setupEditor(profile) {
   const noticeSkip = byId('video-notice-skip');
   const publicationNotice = byId('video-publication-notice');
   const draftKey = 'anastasi.editor.draft.' + profile.callsign;
-  let file, sourceUrl, duration = 0, events = [], selected, busy = false, cached, submitted = false, submitting = false;
+  let file, sourceUrl, duration = 0, events = [], selected, busy = false, cached, reviewVideo, submitted = false, submitting = false;
   let montageTitle = '', sendToReview = false;
   let transfer = {};
   let ranges = [];
@@ -159,6 +159,7 @@ export function setupEditor(profile) {
   }
   function changed() {
     cached = undefined;
+    reviewVideo = undefined;
     submitted = false;
     transfer = {};
     progress.hidden = true;
@@ -245,27 +246,39 @@ export function setupEditor(profile) {
     controls();
     try {
       if (hideNotice) await account.videoNotice(false).catch(() => {});
-      if (!cached) {
+      if (send ? !reviewVideo : !cached) {
+        let outro;
+        if (send) {
+          cached = undefined;
+          message('Cargando el cierre de Anástasi…');
+          outro = await account.videoOutro();
+          if (outro.type !== 'video/mp4' || !outro.size) throw new Error('El video de cierre no está disponible. Intenta nuevamente.');
+        }
         message('Preparando video…');
-        const { renderVideo } = await import('./video-render.js');
+        const { renderVideo } = await import('./video-render.js?v=1.10');
         const height = Math.max(2, Math.floor(Math.min(720, player.videoHeight) / 2) * 2);
-        cached = await renderVideo(file, ranges, height, message);
+        const width = Math.max(2, Math.round(player.videoWidth * height / player.videoHeight / 2) * 2);
+        const video = await renderVideo(file, ranges, height, message, { outro, width });
+        if (send) reviewVideo = video;
+        else cached = video;
       }
       if (send) {
         if (!('cover' in transfer)) {
           message('Preparando carátula…');
-          const url = URL.createObjectURL(cached);
+          const url = URL.createObjectURL(reviewVideo);
           try { transfer.cover = await captureVideoCover(url); }
           finally { URL.revokeObjectURL(url); }
         }
         progress.value = 0;
         progress.hidden = false;
         message('Subiendo video…');
-        await upload(cached, montageTitle, transfer, percent => {
+        await upload(reviewVideo, montageTitle, transfer, percent => {
           progress.value = percent;
           message('Subiendo video… ' + percent + ' %');
         });
         submitted = true;
+        reviewVideo = undefined;
+        transfer = {};
         message('Enviado a revisión.');
       } else {
         const link = document.createElement('a');
