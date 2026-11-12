@@ -12,8 +12,8 @@ function create(count, duration = 0) {
 try {
   for (const count of [0,1,2,3,7]) {
     const carousel = create(count);
-    check(fixture.querySelectorAll('.carousel-card').length === (count > 1 ? 5 : count), `${count} imágenes: cantidad de elementos acotada`);
-    if (count < 2) check([...fixture.querySelectorAll('.carousel-arrow')].every(button=>button.hidden), `${count} imágenes: controles ocultos`);
+    check(fixture.querySelectorAll('.carousel-card').length === (count ? 5 : 0), `${count} imágenes: cantidad de elementos acotada`);
+    if (!count) check([...fixture.querySelectorAll('.carousel-arrow')].every(button=>button.hidden), `${count} imágenes: controles ocultos`);
     else {
       let valid = true;
       for (let i=0;i<count*3;i++) {
@@ -39,6 +39,11 @@ try {
     carousel.destroy();
     check(!fixture.querySelector('.carousel-card'), `${count} imágenes: limpieza del componente`);
   }
+  const single = create(1, 180);
+  const firstCard = single.stage.querySelector('[data-position="0"]');
+  await delay(1700);
+  check(single.motion.matches || single.stage.querySelector('[data-position="0"]') !== firstCard, 'Una foto también se desplaza automáticamente');
+  single.destroy();
   const animated = create(3,180);
   animated.move(1); animated.move(1);
   check(animated.index===(animated.motion.matches ? 2 : 1),'Transiciones simultáneas bloqueadas o instantáneas con movimiento reducido');
