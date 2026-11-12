@@ -55,11 +55,11 @@ $$;
 
 select set_config('request.jwt.claim.sub','235a160b-42c0-4524-a543-c6faecc25102',true);
 do $$
-declare owner_id constant uuid := '235a160b-42c0-4524-a543-c6faecc25101';
+declare target_profile_id constant uuid := '235a160b-42c0-4524-a543-c6faecc25101';
 begin
-  if not exists(select from public.portal_directory('ANS098') where id=owner_id and not has_avatar)
-    or not exists(select from public.portal_directory_profile(owner_id) where not has_avatar)
-    or exists(select from storage.objects where bucket_id='member-avatars' and name=owner_id::text || '/avatar') then
+  if not exists(select from public.portal_directory('ANS098') where id=target_profile_id and not has_avatar)
+    or not exists(select from public.portal_directory_profile(target_profile_id) where not has_avatar)
+    or exists(select from storage.objects where bucket_id='member-avatars' and name=target_profile_id::text || '/avatar') then
     raise exception 'El directorio privado, el perfil o Storage revelaron un avatar oculto';
   end if;
 end;
