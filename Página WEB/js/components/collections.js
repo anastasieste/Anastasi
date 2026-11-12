@@ -7,12 +7,15 @@ function node(tag, text, className) {
   return element;
 }
 
-export function renderSquads(root, squads) {
+export function renderSquads(root, squads, openRoster) {
   if (!squads.length) return;
   root.replaceChildren();
   root.classList.add('has-content');
   for (const squad of squads) {
-    const card = node('article', '', 'squad-card');
+    const card = node('button', '', 'squad-card');
+    card.type = 'button';
+    card.setAttribute('aria-haspopup', 'dialog');
+    card.setAttribute('aria-controls', 'squad-roster-dialog');
     if (squad.badge || squad.photo) {
       const img = node('img');
       img.src = squad.badge || squad.photo;
@@ -20,10 +23,64 @@ export function renderSquads(root, squads) {
       img.loading = 'lazy';
       card.append(img);
     }
-    card.append(node('h3', squad.name || squad.code), node('p', squad.description));
-    if (squad.members?.length) card.append(node('p', squad.members.map(member => member.callsign).join(' · ')));
+    card.append(node('span', squad.name || squad.code, 'squad-card-name'), node('span', squad.description, 'squad-card-count'));
+    card.addEventListener('click', () => openRoster(squad));
     root.append(card);
   }
+}
+
+function setupDialogControls(dialog) {
+  dialog.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
+  });
+}
+
+export function setupSquadRoster(dialog, loadMembers, avatarUrl) {
+  const heading = dialog.querySelector('h2');
+  const status = dialog.querySelector('[role="status"]');
+  const list = dialog.querySelector('ul');
+  let request = 0;
+
+  setupDialogControls(dialog);
+  dialog.addEventListener('close', () => { if (!dialog.open) list.replaceChildren(); });
+
+  return async squad => {
+    const current = ++request;
+    heading.textContent = squad.name || squad.code;
+    list.replaceChildren();
+    list.setAttribute('aria-busy', 'true');
+    status.textContent = 'Cargando integrantes…';
+    dialog.showModal();
+    try {
+      const members = await loadMembers(squad.code);
+      if (current !== request || !dialog.open) return;
+      const entries = members.map(member => {
+        const row = node('li', '', 'squad-roster-member');
+        if (member.has_avatar) {
+          const avatar = node('span', '', 'avatar');
+          const picture = document.createElement('img');
+          picture.alt = '';
+          picture.loading = 'lazy';
+          picture.decoding = 'async';
+          picture.addEventListener('error', () => avatar.remove(), { once: true });
+          picture.src = avatarUrl(squad.code, member.callsign);
+          avatar.append(picture);
+          row.append(avatar);
+        }
+        row.append(node('strong', member.callsign));
+        return row;
+      });
+      list.replaceChildren(...entries);
+      status.textContent = members.length ? '' : 'Este escuadrón no tiene integrantes activos.';
+    } catch {
+      if (current === request && dialog.open) status.textContent = 'No se pudo cargar la lista. Intenta de nuevo.';
+    } finally {
+      if (current === request) list.setAttribute('aria-busy', 'false');
+    }
+  };
 }
 
 export function setupGallery(items) {
@@ -109,8 +166,7 @@ export function setupGallery(items) {
     filter = button.dataset.filter;
     render(filter);
   }));
-  dialog.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('click', event => { if (event.target === dialog) { const bounds = dialog.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close(); } });
+  setupDialogControls(dialog);
   dialog.addEventListener('close', () => { content.querySelector('video')?.pause(); content.replaceChildren(); });
   render('all');
   return videos => {
