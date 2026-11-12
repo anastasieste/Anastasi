@@ -19,3 +19,6 @@ verify_jwt = false
 
 [functions.member-video]
 verify_jwt = false
+
+[functions.site-photos]
+verify_jwt = false
