@@ -1,11 +1,42 @@
-import { carouselImages, carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.2';
-import { CinematicCarousel } from './components/carousel.js';
-import { renderSquads, setupGallery } from './components/collections.js?v=1.7';
+import { carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.8';
+import { accountConfig } from './data/account-config.js';
+import { CinematicCarousel } from './components/carousel.js?v=1.8';
+import { renderSquads, setupGallery } from './components/collections.js?v=1.8';
 import { account, formMessage, initializeAccountForms, submitAccountForm, videoCover, videoPlayback, watchMemberSession } from './account.js?v=1.7';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
 
-new CinematicCarousel(document.querySelector('.carousel'), carouselImages, carouselSettings);
+const photoFeed = `${accountConfig.url}/functions/v1/site-photos`;
+function photoSource(section, { id, version }) {
+  return `${photoFeed}?${new URLSearchParams({ section, id, v: version })}`;
+}
+fetch(photoFeed).then(async response => {
+  if (!response.ok) return;
+  const { carousel, about } = await response.json();
+  if (carousel.length) {
+    const images = carousel.map((photo, index) => ({
+      src: photoSource('carousel', photo),
+      alt: `Fotografía ${index + 1} de Anástasi`,
+    }));
+    new CinematicCarousel(document.querySelector('.carousel'), images, carouselSettings);
+  }
+  if (about.length) {
+    const photos = document.querySelector('.about-photos');
+    photos.append(...about.map((photo, index) => {
+      const image = document.createElement('img');
+      image.src = photoSource('about', photo);
+      image.alt = `Fotografía ${index + 1} de la comunidad Anástasi`;
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      if (photo.width && photo.height) {
+        image.width = photo.width;
+        image.height = photo.height;
+      }
+      return image;
+    }));
+    photos.hidden = false;
+  }
+}).catch(() => {});
 account.squadCounts().then(counts => {
   const squads = squadCodes.flatMap(code => {
     const count = counts.get(code);
@@ -31,6 +62,65 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && lo
 document.querySelector('#year').textContent = new Date().getFullYear();
 
 const { nav, toggle, desktop, closeMenu } = setupSiteNavigation(document.querySelector('.header'));
+const sectionLinks = [...nav.querySelectorAll('a[href^="#"]')];
+const sections = sectionLinks.map(link => document.getElementById(link.hash.slice(1)));
+let activeAnchor = false;
+let anchorTimer;
+let scrollFrame;
+
+function setActiveSection(index) {
+  sectionLinks.forEach((link, current) => {
+    if (current === index) link.setAttribute('aria-current', 'location');
+    else link.removeAttribute('aria-current');
+  });
+}
+
+function releaseAnchor() {
+  clearTimeout(anchorTimer);
+  activeAnchor = false;
+}
+
+function finishAnchorAfterScroll() {
+  clearTimeout(anchorTimer);
+  anchorTimer = setTimeout(releaseAnchor, 160);
+}
+
+function selectAnchor(hash) {
+  const index = sectionLinks.findIndex(link => link.hash === hash);
+  if (index < 0) return;
+  setActiveSection(index);
+  activeAnchor = true;
+  finishAnchorAfterScroll();
+}
+
+function updateSectionFromScroll() {
+  if (activeAnchor) {
+    finishAnchorAfterScroll();
+    return;
+  }
+  if (scrollFrame) return;
+  scrollFrame = requestAnimationFrame(() => {
+    scrollFrame = null;
+    if (activeAnchor) return;
+    const page = document.documentElement;
+    const atBottom = scrollY > 0 && page.scrollHeight - (scrollY + innerHeight) <= 2;
+    const offset = parseFloat(getComputedStyle(page).scrollPaddingTop) + 2;
+    const index = atBottom ? sections.length - 1 : sections.findLastIndex(section => section.getBoundingClientRect().top <= offset);
+    setActiveSection(Math.max(index, 0));
+  });
+}
+
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[href^="#"]');
+  if (link && !event.defaultPrevented && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) selectAnchor(link.hash);
+});
+window.addEventListener('hashchange', () => selectAnchor(location.hash));
+window.addEventListener('scroll', updateSectionFromScroll, { passive: true });
+window.addEventListener('scrollend', releaseAnchor);
+window.addEventListener('wheel', releaseAnchor, { passive: true });
+window.addEventListener('touchmove', releaseAnchor, { passive: true });
+window.addEventListener('resize', updateSectionFromScroll);
+selectAnchor(location.hash);
 
 const portalButton = nav.querySelector('.members-link');
 const portal = document.querySelector('#miembros');
@@ -129,14 +219,6 @@ if ('IntersectionObserver' in window) {
     if (entry.isIntersecting) { entry.target.classList.add('is-visible'); reveal.unobserve(entry.target); }
   }), { threshold: .08 });
   document.querySelectorAll('.reveal').forEach(element => reveal.observe(element));
-  const links = [...nav.querySelectorAll('a[href^="#"]')];
-  const activeSections = new Set();
-  const sections = new IntersectionObserver(entries => {
-    entries.forEach(entry => entry.isIntersecting ? activeSections.add(entry.target.id) : activeSections.delete(entry.target.id));
-    const active = links.find(link => activeSections.has(link.hash.slice(1)));
-    if (active) links.forEach(link => { if (link === active) link.setAttribute('aria-current', 'location'); else link.removeAttribute('aria-current'); });
-  }, { rootMargin: '-96px 0px 0px' });
-  links.forEach(link => sections.observe(document.querySelector(link.hash)));
 }
 motion.addEventListener('change', event => { if (event.matches) document.documentElement.classList.remove('js-motion'); });
 
