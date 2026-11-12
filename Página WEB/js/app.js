@@ -1,6 +1,6 @@
 import { carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.8';
 import { accountConfig } from './data/account-config.js';
-import { CinematicCarousel } from './components/carousel.js?v=1.8';
+import { CinematicCarousel } from './components/carousel.js?v=1.9';
 import { renderSquads, setupGallery } from './components/collections.js?v=1.8';
 import { account, formMessage, initializeAccountForms, submitAccountForm, videoCover, videoPlayback, watchMemberSession } from './account.js?v=1.7';
 import { setupMemberMenu } from './member-menu.js';
@@ -24,14 +24,15 @@ fetch(photoFeed).then(async response => {
     const photos = document.querySelector('.about-photos');
     photos.append(...about.map((photo, index) => {
       const image = document.createElement('img');
-      image.src = photoSource('about', photo);
       image.alt = `Fotografía ${index + 1} de la comunidad Anástasi`;
       image.loading = 'lazy';
       image.decoding = 'async';
+      image.fetchPriority = 'low';
       if (photo.width && photo.height) {
         image.width = photo.width;
         image.height = photo.height;
       }
+      image.src = photoSource('about', photo);
       return image;
     }));
     photos.hidden = false;
