@@ -66,10 +66,10 @@ export function setupGallery(items) {
       const isVideo = item.type === 'video';
       const card = node('button', '', isVideo ? 'media-card media-card-video' : 'media-card');
       card.type = 'button';
-      card.setAttribute('aria-label', `Abrir ${item.type === 'video' ? 'video' : 'fotografía'}: ${item.title}`);
+      card.setAttribute('aria-label', isVideo ? `Abrir video: ${item.title}` : `Abrir fotografía: ${item.alt}`);
       if (isVideo || item.thumbnail || item.type === 'photo') {
         const image = node('img');
-        image.alt = isVideo ? '' : item.alt || item.title;
+        image.alt = isVideo ? '' : item.alt;
         image.loading = 'lazy';
         image.width = 640;
         image.height = 360;
@@ -85,11 +85,7 @@ export function setupGallery(items) {
           } else observer.observe(image);
         } else image.src = item.thumbnail || item.src;
       }
-      card.append(node('h3', item.title));
-      if (!isVideo) {
-        const date = item.publishedAt ? new Date(`${item.publishedAt.slice(0, 10)}T12:00:00`).toLocaleDateString('es-PR') : '';
-        card.append(node('p', [item.callsign, item.squad, date].filter(Boolean).join(' · ')));
-      }
+      if (isVideo) card.append(node('h3', item.title));
       card.addEventListener('click', () => {
         content.replaceChildren();
         const media = node(item.type === 'video' ? 'video' : 'img');
@@ -100,8 +96,9 @@ export function setupGallery(items) {
           media.playsInline = true;
           const poster = card.querySelector('img')?.getAttribute('src');
           if (poster) media.poster = poster;
-        } else media.alt = item.alt || item.title;
-        content.append(media, node('p', item.title));
+        } else media.alt = item.alt;
+        content.append(media);
+        if (isVideo) content.append(node('p', item.title));
         dialog.showModal();
       });
       root.append(card);

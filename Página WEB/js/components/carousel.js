@@ -3,22 +3,21 @@ const modulo = (value, length) => ((value % length) + length) % length;
 export class CinematicCarousel {
   constructor(root, images, settings = {}) {
     this.root = root;
-    this.images = [...images].sort((a, b) => a.order - b.order);
+    this.images = images;
     this.interval = Math.max(1500, settings.interval ?? 4800);
     this.duration = Math.max(0, settings.duration ?? 850);
     this.index = 0;
     this.busy = false;
-    this.paused = false;
+    this.resumeAt = 0;
     this.reasons = new Set();
     this.motion = matchMedia('(prefers-reduced-motion: reduce)');
     this.abort = new AbortController();
     this.cards = [];
     this.stage = root.querySelector('.carousel-stage');
-    this.pauseButton = root.querySelector('[data-carousel="pause"]');
+    this.arrows = [...this.stage.querySelectorAll('.carousel-arrow')];
     root.style.setProperty('--transition', `${this.duration}ms`);
     this.build();
     this.bind();
-    this.updateCaption();
     this.schedule();
   }
 
@@ -27,12 +26,6 @@ export class CinematicCarousel {
   }
 
   build() {
-    if (!this.images.length) {
-      this.stage.classList.add('gallery-empty');
-      const message = document.createElement('p');
-      message.textContent = 'Las fotografías de Anástasi están por llegar.';
-      this.stage.append(message);
-    }
     // Cinco posiciones reciclables permiten un loop continuo, incluso con dos imágenes.
     const positions = this.images.length > 1 ? [-2, -1, 0, 1, 2] : this.images.length ? [0] : [];
     for (const position of positions) {
@@ -71,21 +64,17 @@ export class CinematicCarousel {
         this.move(Math.sign(card.position), true);
       });
     }
-    this.root.querySelectorAll('.carousel-controls button').forEach(button => { button.disabled = this.images.length < 2; });
+    this.root.hidden = !this.images.length;
+    this.arrows.forEach(button => { button.hidden = this.images.length < 2; });
   }
 
   fill(card, index) {
     const item = this.images[index];
-    card.element.dataset.framing = item.framing ?? '';
     card.img.src = item.src;
     card.img.alt = item.alt;
     card.img.loading = Math.abs(card.position) < 2 ? 'eager' : 'lazy';
     card.img.fetchPriority = card.position === 0 ? 'high' : 'auto';
-    card.img.srcset = item.srcset || '';
-    if (item.srcset) card.img.sizes = '(max-width: 767px) 86vw, min(74vw, 1216px)';
     card.reflected.src = item.src;
-    card.element.setAttribute('aria-label', `${index + 1} de ${this.images.length}: ${item.title}`);
-    card.button.setAttribute('aria-label', `Ver ${item.title}`);
   }
 
   position(card) {
@@ -95,6 +84,7 @@ export class CinematicCarousel {
     card.element.inert = offscreen;
     card.button.hidden = card.position === 0 || offscreen;
     card.button.tabIndex = offscreen || card.position === 0 ? -1 : 0;
+    card.button.setAttribute('aria-label', card.position < 0 ? 'Ver fotografía anterior' : 'Ver fotografía siguiente');
   }
 
   move(direction, manual = false) {
@@ -109,7 +99,7 @@ export class CinematicCarousel {
       card.position -= direction;
       this.position(card);
     }
-    this.updateCaption(manual);
+    if (manual) this.root.querySelector('.carousel-status').textContent = this.images[this.index].alt;
     const finish = () => {
       for (const card of this.cards) {
         if (Math.abs(card.position) <= 2) continue;
@@ -128,21 +118,14 @@ export class CinematicCarousel {
     else this.finishTimer = setTimeout(finish, this.duration + 35);
   }
 
-  updateCaption(manual = false) {
-    const item = this.images[this.index];
-    this.root.querySelector('.slide-count').textContent = this.images.length ? `${String(this.index + 1).padStart(2, '0')} / ${String(this.images.length).padStart(2, '0')}` : '00 / 00';
-    this.root.querySelector('.slide-title').textContent = item?.title ?? 'Próximamente';
-    this.root.querySelector('.slide-description').textContent = item?.description ?? 'Fotografías oficiales pendientes';
-    if (manual && item) this.root.querySelector('.carousel-status').textContent = `${this.index + 1} de ${this.images.length}: ${item.title}`;
-  }
-
   schedule() {
     clearTimeout(this.timer);
-    const stopped = this.paused || this.motion.matches;
-    this.pauseButton.setAttribute('aria-label', this.motion.matches ? 'Reproducción automática desactivada por movimiento reducido' : this.paused ? 'Reanudar reproducción automática' : 'Pausar reproducción automática');
-    this.pauseButton.querySelector('span').textContent = stopped ? '▷' : 'Ⅱ';
-    this.pauseButton.disabled = this.motion.matches || this.images.length < 2;
-    if (!stopped && !this.reasons.size && !this.busy && this.images.length > 1) this.timer = setTimeout(() => this.move(1), this.interval);
+    if (this.motion.matches || this.reasons.size || this.busy || this.images.length < 2) return;
+    const delay = this.resumeAt ? Math.max(0, this.resumeAt - performance.now()) : this.interval;
+    this.timer = setTimeout(() => {
+      this.resumeAt = 0;
+      this.move(1);
+    }, delay);
   }
 
   setReason(reason, active) {
@@ -151,11 +134,17 @@ export class CinematicCarousel {
     this.schedule();
   }
 
+  resumeAfterInteraction(reason) {
+    this.resumeAt = performance.now() + 3000;
+    this.setReason(reason, false);
+  }
+
   bind() {
-    this.on(this.root.querySelector('[data-carousel="previous"]'), 'click', () => this.move(-1, true));
-    this.on(this.root.querySelector('[data-carousel="next"]'), 'click', () => this.move(1, true));
-    this.on(this.pauseButton, 'click', () => { this.paused = !this.paused; this.schedule(); });
-    // El ratón puede permanecer sobre la foto. Solo el foco de teclado pausa la reproducción.
+    for (const button of this.arrows) {
+      this.on(button, 'click', () => this.move(button.dataset.carousel === 'previous' ? -1 : 1, true));
+      this.on(button, 'pointerenter', event => { if (event.pointerType === 'mouse') this.setReason(button, true); });
+      this.on(button, 'pointerleave', event => { if (event.pointerType === 'mouse') this.resumeAfterInteraction(button); });
+    }
     this.on(this.root, 'focusin', event => this.setReason('focus', event.target.matches(':focus-visible')));
     this.on(this.root, 'focusout', event => { if (!this.root.contains(event.relatedTarget)) this.setReason('focus', false); });
     this.on(document, 'visibilitychange', () => this.setReason('hidden', document.hidden));
@@ -169,7 +158,7 @@ export class CinematicCarousel {
       }
     });
     this.on(this.stage, 'pointerdown', event => {
-      if (!event.isPrimary || event.button !== 0 || this.busy) return;
+      if (!event.isPrimary || event.pointerType !== 'touch' || event.button !== 0 || this.images.length < 2) return;
       this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
       this.setReason('drag', true);
     });
@@ -182,13 +171,17 @@ export class CinematicCarousel {
         this.move(dx < 0 ? 1 : -1, true);
       }
       this.drag = null;
-      this.setReason('drag', false);
+      this.resumeAfterInteraction('drag');
     });
-    this.on(window, 'pointercancel', () => { this.drag = null; this.setReason('drag', false); });
+    this.on(window, 'pointercancel', event => {
+      if (event.pointerId !== this.drag?.id) return;
+      this.drag = null;
+      this.resumeAfterInteraction('drag');
+    });
     this.on(window, 'blur', () => {
       if (!this.drag) return;
       this.drag = null;
-      this.setReason('drag', false);
+      this.resumeAfterInteraction('drag');
     });
     if ('IntersectionObserver' in window) {
       this.observer = new IntersectionObserver(([entry]) => this.setReason('offscreen', !entry.isIntersecting), { threshold: .1 });
@@ -201,6 +194,6 @@ export class CinematicCarousel {
     clearTimeout(this.finishTimer);
     this.abort.abort();
     this.observer?.disconnect();
-    this.stage.replaceChildren();
+    this.cards.forEach(card => card.element.remove());
   }
 }
