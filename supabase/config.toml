@@ -22,3 +22,6 @@ verify_jwt = false
 
 [functions.site-photos]
 verify_jwt = false
+
+[functions.public-member-avatar]
+verify_jwt = false
