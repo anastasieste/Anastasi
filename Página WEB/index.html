@@ -11,9 +11,8 @@
   <link rel="icon" href="assets/images/branding/Chango2.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/styles.css?v=1.7">
-  <link rel="preload" as="image" href="assets/images/carousel/GrupalPrueba.jpg">
-  <script type="module" src="js/app.js?v=1.7"></script>
+  <link rel="stylesheet" href="css/styles.css?v=1.8">
+  <script type="module" src="js/app.js?v=1.8"></script>
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -30,11 +29,10 @@
         <div><p class="eyebrow hero-name">ANÁSTASI</p><h1 lang="grc">ἀνάστασις</h1></div>
         <div class="hero-context"><p class="eyebrow">AIRSOFT · PUERTO RICO</p><p>Una comunidad.<br>Nuestras reglas.</p></div>
       </div>
-      <div class="carousel" role="region" aria-roledescription="carrusel" aria-label="Imágenes de Anástasi" tabindex="0">
-        <div class="carousel-stage"></div>
-        <div class="carousel-bottom">
-          <div class="slide-caption"><span class="slide-count">01 / 03</span><div><p class="slide-title">El encuentro</p><p class="slide-description">Panorámica · Foto grupal provisional</p></div></div>
-          <div class="carousel-controls"><button data-carousel="previous" aria-label="Fotografía anterior"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button><button data-carousel="pause" aria-label="Pausar reproducción automática"><span aria-hidden="true">Ⅱ</span></button><button data-carousel="next" aria-label="Fotografía siguiente"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button></div>
+      <div class="carousel" role="region" aria-roledescription="carrusel" aria-label="Imágenes de Anástasi" tabindex="0" hidden>
+        <div class="carousel-stage">
+          <button type="button" class="carousel-arrow" data-carousel="previous" aria-label="Fotografía anterior" hidden></button>
+          <button type="button" class="carousel-arrow" data-carousel="next" aria-label="Fotografía siguiente" hidden></button>
         </div>
         <p class="sr-only carousel-status" aria-live="polite" aria-atomic="true"></p>
       </div>
@@ -52,10 +50,7 @@
     </section>
     <section id="nosotros" class="section about reveal" aria-labelledby="about-title">
       <div class="section-heading"><p class="eyebrow">NOSOTROS</p><h2 id="about-title">Una identidad común.<br>Una forma propia.</h2></div>
-      <div class="about-copy"><p>Somos una comunidad de airsoft de Puerto Rico. Nos une el compañerismo y la libertad de construir algo que nos represente.</p><p>Nos organizamos en escuadrones autónomos. Cada uno desarrolla su identidad, su estética y su organización, con una base compartida: disciplina, respeto y honestidad deportiva.</p><figure class="about-photo">
-        <img src="assets/images/carousel/GrupalPrueba.jpg" alt="Retrato grupal de jugadores de airsoft" width="1779" height="884" loading="lazy" decoding="async">
-        <figcaption>Retrato grupal · Foto provisional</figcaption>
-      </figure></div>
+      <div class="about-copy"><p>Somos una comunidad de airsoft de Puerto Rico. Nos une el compañerismo y la libertad de construir algo que nos represente.</p><p>Nos organizamos en escuadrones autónomos. Cada uno desarrolla su identidad, su estética y su organización, con una base compartida: disciplina, respeto y honestidad deportiva.</p><div class="about-photos" hidden></div></div>
     </section>
     <section class="manifesto section reveal" aria-label="Nuestro manifiesto"><p class="eyebrow">NUESTRO MANIFIESTO</p><blockquote><p>Hay facciones que siguen órdenes.<br>Hay facciones que siguen ideales.</p><p>Y luego estamos nosotros,<br><span>con nuestras propias reglas.</span></p><p>Y quizás por eso somos<br>difíciles de detener.</p></blockquote></section>
     <section id="filosofia" class="section philosophy reveal" aria-labelledby="philosophy-title"><div class="section-heading"><p class="eyebrow">FILOSOFÍA</p><h2 id="philosophy-title">Lo que nos sostiene.</h2></div><div class="pillars"><article><h3>Autonomía</h3><p>Cada escuadrón desarrolla su propia identidad y organización dentro de la estructura del clan.</p></article><article><h3>Disciplina</h3><p>Desarrollamos continuamente nuestras habilidades y actuamos con responsabilidad, dentro y fuera del campo.</p></article><article><h3>Respeto</h3><p>La ética deportiva, el autocontrol y el respeto hacia otros jugadores son fundamentales.</p></article></div></section>
