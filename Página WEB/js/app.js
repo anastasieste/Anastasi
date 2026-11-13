@@ -1,7 +1,7 @@
 import { carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.8';
 import { accountConfig } from './data/account-config.js';
 import { CinematicCarousel } from './components/carousel.js?v=1.9';
-import { renderSquads, setupGallery, setupSquadRoster } from './components/collections.js?v=1.11';
+import { renderSquads, setupGallery } from './components/collections.js?v=1.12';
 import { account, formMessage, initializeAccountForms, publicSquadAvatar, submitAccountForm, videoCover, videoPlayback, watchMemberSession } from './account.js?v=1.11';
 import { setupMemberMenu } from './member-menu.js';
 import { setupSiteNavigation } from './site-navigation.js';
@@ -38,14 +38,13 @@ fetch(photoFeed).then(async response => {
     photos.hidden = false;
   }
 }).catch(() => {});
-const openSquadRoster = setupSquadRoster(document.querySelector('#squad-roster-dialog'), account.publicSquadRoster, publicSquadAvatar);
 account.squadCounts().then(counts => {
   const squads = squadCodes.flatMap(code => {
     const count = counts.get(code);
     if (!Number.isSafeInteger(count) || count < 1) return [];
     return [{ code, name: code, description: count === 1 ? '1 miembro' : count + ' miembros' }];
   });
-  renderSquads(document.querySelector('#squad-list'), squads, openSquadRoster);
+  renderSquads(document.querySelector('#squad-list'), squads, account.publicSquadRoster, publicSquadAvatar);
 }).catch(() => {});
 const showPublishedVideos = setupGallery(galleryItems);
 let galleryVersion = 0;
