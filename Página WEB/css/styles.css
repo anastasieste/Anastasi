@@ -888,8 +888,9 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 .admin-filter input { min-width: 0; max-width: 100%; padding: 8px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; }
 .admin-member-list { display: grid; gap: 8px; }
 .admin-account summary {
+  --admin-state-column: 5.75rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(88px, .55fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, .55fr) var(--admin-state-column);
   gap: 8px 14px;
   align-items: center;
   min-height: 38px;
@@ -900,7 +901,7 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 .admin-identity strong::before { content: "▸"; display: inline-block; margin-right: 7px; color: var(--terracotta-light); }
 .admin-account[open] .admin-identity strong::before { transform: rotate(90deg); }
 .admin-identity span, .admin-role, .admin-contact { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-.admin-state { padding: 3px 7px; border: 1px solid var(--line); font-size: 12px; white-space: nowrap; }
+.admin-state { justify-self: end; padding: 3px 7px; border: 1px solid var(--line); font-size: 12px; white-space: nowrap; }
 .admin-state[data-state="ACTIVA"] { color: #b6dec2; border-color: #42624a; }
 .admin-state[data-state="PENDIENTE"] { color: #f1c38e; border-color: #735432; }
 .admin-state:is([data-state="SUSPENDIDA"], [data-state="RECHAZADA"]) { color: #ffae9c; border-color: var(--accent-line); }
@@ -921,9 +922,8 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 }
 @media (max-width: 480px) {
   .application-row summary { grid-template-columns: minmax(0, 1fr) auto; }
-  .admin-account summary { grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; }
+  .admin-account summary { grid-template-columns: minmax(0, 1fr) var(--admin-state-column); gap: 3px 8px; }
   .admin-identity { grid-row: span 2; }
-  .admin-role, .admin-state { justify-self: end; }
   .admin-filter { flex: 1 1 100%; }
   .admin-filter input { flex: 1; }
   .member-page { width: calc(100% - 28px); }
