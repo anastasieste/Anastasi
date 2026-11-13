@@ -107,7 +107,7 @@ export function setupGallery(items) {
   const dialog = document.querySelector('#media-dialog');
   const content = dialog.querySelector('.media-content');
   const approvedItems = items.filter(item => item.approved === true);
-  let publishedVideos = [];
+  let publishedContent = [];
   let filter = 'all';
   const coverSources = new Map();
   const observer = new IntersectionObserver(entries => {
@@ -126,7 +126,7 @@ export function setupGallery(items) {
     }
   }, { rootMargin: '150px' });
   function render(filter) {
-    const visible = [...publishedVideos, ...approvedItems].filter(item => filter === 'all' || item.type === filter);
+    const visible = [...publishedContent, ...approvedItems].filter(item => filter === 'all' || item.type === filter);
     observer.disconnect();
     root.replaceChildren();
     root.classList.toggle('has-content', visible.length > 0);
@@ -187,9 +187,9 @@ export function setupGallery(items) {
   setupDialogControls(dialog);
   dialog.addEventListener('close', () => { content.querySelector('video')?.pause(); content.replaceChildren(); });
   render('all');
-  return videos => {
-    if (JSON.stringify(videos) === JSON.stringify(publishedVideos)) return;
-    publishedVideos = videos;
+  return items => {
+    if (JSON.stringify(items) === JSON.stringify(publishedContent)) return;
+    publishedContent = items;
     render(filter);
   };
 }
