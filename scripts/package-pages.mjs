@@ -9,7 +9,7 @@ const modules = process.env.ANASTASI_FFMPEG_MODULES || path.join(root, 'node_mod
 if (path.dirname(target) !== path.resolve(root) || path.basename(target) !== 'dist') throw new Error('Ruta de salida no válida.');
 await rm(target, { recursive: true, force: true });
 await mkdir(target, { recursive: true });
-for (const file of ['index.html', 'registro.html', 'restablecer.html', 'correo.html', 'perfil.html', 'miembros.html', 'editor.html', 'gestion.html',
+for (const file of ['index.html', 'registro.html', 'restablecer.html', 'correo.html', 'perfil.html', 'miembros.html', 'editor.html', 'subir.html', 'gestion.html',
   'solicitudes.html', 'css', 'js', 'assets', 'manifest.webmanifest', 'sw.js', '.nojekyll']) {
   await cp(path.join(source, file), path.join(target, file), { recursive: true });
 }

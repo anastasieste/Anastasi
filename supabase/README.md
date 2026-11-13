@@ -59,6 +59,8 @@ Con cuentas de prueba autorizadas, verifica registro, confirmación, aviso, apro
 6. Ejecuta `npm ci --ignore-scripts` y `node scripts/package-pages.mjs` para preparar la versión publicable. Comprueba los permisos con `tests/member-videos.sql` y verifica el flujo completo con un montaje de prueba en Drive. Los miembros con cuenta aprobada pueden editar y enviar montajes. La revisión requiere una cuenta administradora.
 7. Configura `VIDEO_OUTRO_FOLDER` con el ID de `Mi unidad/Editor/Aplicar a video`. Conserva un solo `FinalVideoLogo.mp4` en esa carpeta. La función `member-video` lee el archivo con el mismo conector de solo lectura de las fotografías. El Editor lo añade al enviar a revisión y conserva la exportación local por separado.
 
+Aplica `20261115000000_member_content.sql` antes de desplegar la función `member-video` que admite fotos. Configura `PHOTO_GALLERY_PENDING`, `PHOTO_GALLERY_APPROVED` y `PHOTO_GALLERY_REJECTED` con los IDs de `Fotos/Galería/Revisión`, `Aprobadas` y `Rechazadas`. El mismo trabajo de limpieza procesa fotos y videos rechazados a partir del séptimo día. Ejecuta `tests/member-content.sql` para comprobar sus estados y permisos con datos revertibles.
+
 ## Fotografías del sitio
 
 1. Crea el proyecto de Apps Script con `google-photo/Code.gs` y su manifiesto. Configura las propiedades `PHOTO_DRIVE_CAROUSEL` con el ID de `Mi unidad/Fotos/Carrusel` y `PHOTO_TOKEN_SECRET` con un secreto aleatorio de al menos 32 caracteres. Ejecuta `verifyPhotoFolder` con la cuenta de Anástasi y autoriza el acceso de solo lectura. Implementa el script como aplicación web ejecutada por el propietario y accesible para cualquiera. Solo una petición con el secreto recibe un token.

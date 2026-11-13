@@ -15,6 +15,7 @@ export function setupMemberMenu(button, { onSignIn, onSignOut, loginDialog = fal
   options.innerHTML = `
     <a href="perfil.html">Mi perfil</a>
     <a href="editor.html">Editor</a>
+    <a href="subir.html">Subir contenido</a>
     <a href="miembros.html">Miembros</a>
     <a href="gestion.html" data-admin hidden>Panel Admin</a>
     <button type="button" class="member-signout">Cerrar sesión</button>`;

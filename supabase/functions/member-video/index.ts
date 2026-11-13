@@ -6,6 +6,8 @@ const driveApi = "https://www.googleapis.com/drive/v3/files";
 const driveUpload = "https://www.googleapis.com/upload/drive/v3/files";
 const chunkSize = 2 * 1024 * 1024;
 const maxSize = 100 * 1024 * 1024;
+const photoMaxSize = 10 * 1024 * 1024;
+const extensions = new Map([["video/mp4", ".mp4"], ["image/jpeg", ".jpg"], ["image/png", ".png"], ["image/webp", ".webp"]]);
 const outroName = "FinalVideoLogo.mp4";
 const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 const encoder = new TextEncoder();
@@ -17,12 +19,13 @@ const cors = {
   "Cache-Control": "no-store",
 };
 
-type Video = {
+type Submission = {
   id: string;
   author_id: string;
   title: string;
   bytes: number;
   drive_id: string;
+  mime_type: string;
   cover?: string | null;
   upload_url: string | null;
   created_at: string;
@@ -41,11 +44,12 @@ function configured(name: string) {
   if (!value) throw new RequestError(503, "El servicio de video aún no está disponible.");
   return value;
 }
-function folders() {
+function folders(type = "video/mp4") {
+  const prefix = type === "video/mp4" ? "VIDEO_DRIVE_" : "PHOTO_GALLERY_";
   return {
-    pending: configured("VIDEO_DRIVE_PENDING"),
-    approved: configured("VIDEO_DRIVE_APPROVED"),
-    rejected: configured("VIDEO_DRIVE_REJECTED"),
+    pending: configured(prefix + "PENDING"),
+    approved: configured(prefix + "APPROVED"),
+    rejected: configured(prefix + "REJECTED"),
   };
 }
 async function database<T>(name: string, parameters: object): Promise<T> {
@@ -58,7 +62,7 @@ async function database<T>(name: string, parameters: object): Promise<T> {
   return await response.json() as T;
 }
 function rpc<T>(operation: string, input: object = {}): Promise<T> {
-  return database<T>("portal_video_service", { operation, input });
+  return database<T>("portal_content_service", { operation, input });
 }
 async function identify(request: Request) {
   const authorization = request.headers.get("Authorization");
@@ -149,16 +153,16 @@ async function outro(actor: string) {
   if (!response.ok || !response.body) throw driveError();
   return new Response(response.body, { headers: { ...cors, "Content-Type": "video/mp4", "X-Content-Type-Options": "nosniff" } });
 }
-async function availableInGallery(record: Video) {
+async function availableInGallery(record: Submission) {
   if (record.status !== "approved") return false;
   const info = await fileInfo(record.drive_id);
-  return !!info && !info.trashed && info.mimeType === "video/mp4" && !!info.parents?.includes(folders().approved);
+  return !!info && !info.trashed && info.mimeType === record.mime_type && !!info.parents?.includes(folders(record.mime_type).approved);
 }
-async function gallery() {
-  const folder = folders().approved;
+async function gallery(photos = false) {
+  const folder = folders(photos ? "image/jpeg" : "video/mp4").approved;
   if (!/^[-\w]+$/.test(folder)) throw driveError();
   const params = new URLSearchParams({
-    q: `'${folder}' in parents and trashed = false and mimeType = 'video/mp4'`,
+    q: `'${folder}' in parents and trashed = false and ${photos ? "mimeType contains 'image/'" : "mimeType = 'video/mp4'"}`,
     fields: "nextPageToken,files(id)",
     pageSize: "1000",
   });
@@ -166,15 +170,15 @@ async function gallery() {
   let pageToken: string | undefined;
   do {
     if (pageToken) params.set("pageToken", pageToken);
-    const response = await drive(driveApi + "?" + params);
+    const response = await (photos ? readDrive : drive)(driveApi + "?" + params);
     if (!response.ok) throw driveError();
     const page = await response.json() as { nextPageToken?: string; files: { id: string }[] };
     ids.push(...(page.files ?? []).map(file => file.id));
     pageToken = page.nextPageToken;
   } while (pageToken);
-  return json(ids.length ? await database("portal_video_gallery", { drive_ids: ids }) : []);
+  return json(ids.length ? await database(photos ? "portal_photo_gallery" : "portal_video_gallery", { drive_ids: ids }) : []);
 }
-async function cover(record: Video) {
+async function cover(record: Submission) {
   if (!record.cover || !await availableInGallery(record)) throw new RequestError(404, "La carátula no está disponible.");
   const bytes = Uint8Array.from(atob(record.cover.slice("data:image/jpeg;base64,".length)), value => value.charCodeAt(0));
   return new Response(bytes, { headers: { ...cors, "Content-Type": "image/jpeg", "X-Content-Type-Options": "nosniff" } });
@@ -189,51 +193,64 @@ async function beginUpload(request: Request, actor: string) {
   const body = await request.json();
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 100) : "";
   const bytes = body.bytes;
-  if (!title || !Number.isInteger(bytes) || bytes < 1 || bytes > maxSize) {
-    throw new RequestError(400, "El montaje debe tener un título y ocupar hasta 100 MB.");
+  const mime = body.mime_type ?? "video/mp4";
+  const isVideo = mime === "video/mp4";
+  const extension = extensions.get(mime);
+  if (!extension || !title || !Number.isInteger(bytes) || bytes < 1 || bytes > (isVideo ? maxSize : photoMaxSize)) {
+    throw new RequestError(400, isVideo ? "El video debe tener un título y ocupar hasta 100 MB." : "La foto debe tener un título, ser JPG, PNG o WebP y ocupar hasta 10 MB.");
   }
-  const cover = body.cover ?? null;
+  const cover = isVideo ? body.cover ?? null : null;
   if (cover !== null && (typeof cover !== "string" || cover.length > 80023 ||
       !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+={0,2}$/.test(cover) ||
       (cover.length - "data:image/jpeg;base64,".length) % 4 !== 0)) {
     throw new RequestError(400, "La carátula no es válida.");
   }
-  const pending = folders().pending;
+  const pending = folders(mime).pending;
   const generated = await drive(driveApi + "/generateIds?count=1&space=drive");
   if (!generated.ok) throw driveError();
   const { ids: [driveId] } = await generated.json();
   const response = await drive(driveUpload + "?uploadType=resumable&fields=id", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Upload-Content-Type": "video/mp4", "X-Upload-Content-Length": String(bytes) },
-    body: JSON.stringify({ id: driveId, name: title + ".mp4", mimeType: "video/mp4", parents: [pending] }),
+    headers: { "Content-Type": "application/json", "X-Upload-Content-Type": mime, "X-Upload-Content-Length": String(bytes) },
+    body: JSON.stringify({ id: driveId, name: title + extension, mimeType: mime, parents: [pending] }),
   });
   const uploadUrl = response.headers.get("Location");
   if (!response.ok || !uploadUrl || !/^https:\/\/www\.googleapis\.com\/upload\/drive\/v3\/files\?/.test(uploadUrl)) throw driveError();
-  const record = await database<Video | { limit: true } | null>("portal_video_start_with_cover", {
-    input: { actor, title, bytes, drive_id: driveId, upload_url: uploadUrl, cover },
+  const record = await database<Submission | { limit: true } | null>("portal_content_start", {
+    input: { actor, title, bytes, drive_id: driveId, upload_url: uploadUrl, cover, mime_type: mime },
   });
-  if (record && "limit" in record) throw new RequestError(429, "Ya tienes cinco montajes en preparación o revisión.");
+  if (record && "limit" in record) throw new RequestError(429, "Ya tienes cinco envíos en preparación o revisión.");
   if (!record) throw new RequestError(403, "Se requiere una membresía activa.");
   return json({ id: record.id, chunkSize }, 201);
 }
 async function ownUpload(id: string, actor: string) {
-  const record = await rpc<Video | null>("get", { id });
+  const record = await rpc<Submission | null>("get", { id });
   if (!record || record.author_id !== actor) throw new RequestError(404, "No se encontró este envío.");
   await requireMember(actor);
   return record;
 }
-async function submitVideo(record: Video, actor: string) {
+async function submitContent(record: Submission, actor: string) {
   if (record.status === "pending") return json({ submitted: true, received: record.bytes });
   const info = await fileInfo(record.drive_id);
-  if (!info || info.trashed || info.mimeType !== "video/mp4" || Number(info.size) !== record.bytes ||
-      !info.parents?.includes(folders().pending)) throw driveError();
-  const submitted = await rpc<Video | null>("submit", { id: record.id, actor });
-  if (!submitted && (await rpc<Video | null>("get", { id: record.id }))?.status !== "pending") {
+  if (!info || info.trashed || info.mimeType !== record.mime_type || Number(info.size) !== record.bytes ||
+      !info.parents?.includes(folders(record.mime_type).pending)) throw driveError();
+  const submitted = await rpc<Submission | null>("submit", { id: record.id, actor });
+  if (!submitted && (await rpc<Submission | null>("get", { id: record.id }))?.status !== "pending") {
     throw new RequestError(409, "El envío cambió de estado. Actualiza la página.");
   }
   return json({ submitted: true, received: record.bytes });
 }
-async function transfer(request: Request, record: Video, actor: string) {
+function matchesType(bytes: Uint8Array, mime: string) {
+  const chars = (start: number, end: number) => String.fromCharCode(...bytes.subarray(start, end));
+  switch (mime) {
+    case "video/mp4": return chars(4, 8) === "ftyp";
+    case "image/jpeg": return bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+    case "image/png": return [137, 80, 78, 71, 13, 10, 26, 10].every((value, i) => bytes[i] === value);
+    case "image/webp": return chars(0, 4) === "RIFF" && chars(8, 12) === "WEBP";
+    default: return false;
+  }
+}
+async function transfer(request: Request, record: Submission, actor: string) {
   if (record.status === "pending") return json({ submitted: true, received: record.bytes });
   if (record.status !== "uploading" || !record.upload_url) throw new RequestError(409, "Este envío ya terminó.");
   if (Date.parse(record.created_at) + 2 * 24 * 60 * 60 * 1000 <= Date.now()) {
@@ -242,7 +259,7 @@ async function transfer(request: Request, record: Video, actor: string) {
   if (request.method === "POST") {
     const response = await drive(record.upload_url, { method: "PUT", headers: { "Content-Range": "bytes */" + record.bytes } });
     if (response.status === 308) return json({ received: uploadOffset(response) });
-    if (response.ok || (response.status === 404 && await fileInfo(record.drive_id))) return submitVideo(record, actor);
+    if (response.ok || (response.status === 404 && await fileInfo(record.drive_id))) return submitContent(record, actor);
     if (response.status === 404) throw new RequestError(410, "El envío venció. Vuelve a iniciar la subida.");
     throw driveError();
   }
@@ -267,16 +284,16 @@ async function transfer(request: Request, record: Video, actor: string) {
     bytes.set(value, size);
     size += value.length;
   }
-  if (size !== length || (offset === 0 && new TextDecoder().decode(bytes.subarray(4, 8)) !== "ftyp")) {
-    throw new RequestError(400, "El fragmento está incompleto o el archivo no es un MP4.");
+  if (size !== length || (offset === 0 && !matchesType(bytes, record.mime_type))) {
+    throw new RequestError(400, "El fragmento está incompleto o el formato del archivo no coincide.");
   }
   const response = await drive(record.upload_url, {
     method: "PUT",
-    headers: { "Content-Type": "video/mp4", "Content-Range": `bytes ${offset}-${offset + length - 1}/${record.bytes}` },
+    headers: { "Content-Type": record.mime_type, "Content-Range": `bytes ${offset}-${offset + length - 1}/${record.bytes}` },
     body: bytes,
   });
   if (response.status === 308) return json({ received: uploadOffset(response) });
-  if (response.ok) return submitVideo(record, actor);
+  if (response.ok) return submitContent(record, actor);
   throw driveError();
 }
 
@@ -285,7 +302,7 @@ async function signingKey() {
   if (signingSecret.length < 32) throw new RequestError(503, "El acceso al video aún no está disponible.");
   return await crypto.subtle.importKey("raw", encoder.encode(signingSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
-async function previewTicket(record: Video, actor: string) {
+async function previewTicket(record: Submission, actor: string) {
   if (record.status !== "pending") throw new RequestError(404, "Este video ya no está en revisión.");
   const expires = Math.floor(Date.now() / 1000) + 15 * 60;
   const stamp = actor + "." + expires;
@@ -300,7 +317,7 @@ async function validTicket(id: string, ticket: string) {
   return await crypto.subtle.verify("HMAC", await signingKey(), bytes, encoder.encode(id + "." + actor + "." + expires)) &&
     await rpc<boolean>("can_review", { actor });
 }
-async function play(request: Request, record: Video, ticket: string) {
+async function play(request: Request, record: Submission, ticket: string) {
   const available = record.status === "approved" ? await availableInGallery(record)
     : record.status === "pending" && ticket && await validTicket(record.id, ticket);
   if (!available) {
@@ -315,7 +332,7 @@ async function play(request: Request, record: Video, ticket: string) {
   });
   if (response.status === 416) return new Response(null, { status: 416, headers: { ...cors, "Content-Range": "bytes */" + record.bytes } });
   if (!response.ok) throw driveError();
-  const headers = new Headers({ ...cors, "Content-Type": "video/mp4", "Accept-Ranges": "bytes", "X-Content-Type-Options": "nosniff" });
+  const headers = new Headers({ ...cors, "Content-Type": record.mime_type, "Accept-Ranges": "bytes", "X-Content-Type-Options": "nosniff" });
   for (const key of ["Content-Length", "Content-Range"]) {
     const value = response.headers.get(key);
     if (value !== null) headers.set(key, value);
@@ -333,24 +350,25 @@ async function play(request: Request, record: Video, ticket: string) {
 async function decide(request: Request, id: string, actor: string) {
   const { decision } = await request.json();
   if (decision !== "approved" && decision !== "rejected") throw new RequestError(400, "Selecciona una decisión válida.");
-  const record = await rpc<Video | null>("claim", { id, actor, decision });
+  const record = await rpc<Submission | null>("claim", { id, actor, decision });
   if (!record) {
-    if ((await rpc<Video | null>("get", { id }))?.status === decision) return json({ status: decision });
-    throw new RequestError(409, "Otra decisión ya está en curso para este video.");
+    if ((await rpc<Submission | null>("get", { id }))?.status === decision) return json({ status: decision });
+    throw new RequestError(409, "Otra decisión ya está en curso para este envío.");
   }
-  const destination = folders()[decision];
+  const locations = folders(record.mime_type);
+  const destination = locations[decision];
   const info = await fileInfo(record.drive_id);
   if (!info || info.trashed) throw driveError();
   if (!info.parents?.includes(destination)) {
-    const params = new URLSearchParams({ addParents: destination, fields: "id,parents" });
-    if (info.parents?.length) params.set("removeParents", info.parents.join(","));
+    if (!info.parents?.includes(locations.pending)) throw new RequestError(409, "El archivo ya no está en su carpeta de revisión.");
+    const params = new URLSearchParams({ addParents: destination, removeParents: locations.pending, fields: "id,parents" });
     const response = await drive(driveApi + "/" + encodeURIComponent(record.drive_id) + "?" + params, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}",
     });
     if (!response.ok && !(await fileInfo(record.drive_id))?.parents?.includes(destination)) throw driveError();
   }
-  const completed = await rpc<Video | null>("decide", { id, decision });
-  if (!completed && (await rpc<Video | null>("get", { id }))?.status !== decision) {
+  const completed = await rpc<Submission | null>("decide", { id, decision });
+  if (!completed && (await rpc<Submission | null>("get", { id }))?.status !== decision) {
     throw new RequestError(409, "No se pudo confirmar la decisión. Intenta nuevamente.");
   }
   return json({ status: decision });
@@ -363,14 +381,21 @@ async function cleanup(request: Request) {
   if (!await crypto.subtle.verify("HMAC", key, proof, encoder.encode("Bearer " + expected))) {
     throw new RequestError(401, "Acceso denegado.");
   }
-  const rows = await rpc<Pick<Video, "id" | "drive_id">[]>("expired");
+  const rows = await rpc<Pick<Submission, "id" | "drive_id" | "mime_type" | "status">[]>("expired");
   let deleted = 0;
   for (const record of rows) {
-    const response = await drive(driveApi + "/" + encodeURIComponent(record.drive_id), { method: "DELETE" });
-    if (response.status === 204 || response.status === 404) {
+    try {
+      const locations = folders(record.mime_type);
+      const expectedFolder = record.status === "rejected" ? locations.rejected : locations.pending;
+      const info = await fileInfo(record.drive_id);
+      if (info && !info.parents?.includes(expectedFolder)) continue;
+      if (info) {
+        const response = await drive(driveApi + "/" + encodeURIComponent(record.drive_id), { method: "DELETE" });
+        if (response.status !== 204 && response.status !== 404) continue;
+      }
       await rpc("purged", { id: record.id });
       deleted++;
-    }
+    } catch { /* El siguiente ciclo puede reintentar este archivo. */ }
   }
   return json({ deleted, remaining: rows.length - deleted });
 }
@@ -382,14 +407,15 @@ Deno.serve(async request => {
   try {
     if (action === "cleanup" && request.method === "POST") return await cleanup(request);
     if (action === "gallery" && !id && request.method === "GET") return await gallery();
+    if (action === "photos" && !id && request.method === "GET") return await gallery(true);
     if (extra || (!["start", "access", "outro"].includes(action) && !uuid.test(id))) throw new RequestError(404, "Ruta no disponible.");
     if (action === "cover" && request.method === "GET") {
-      const record = await rpc<Video | null>("get", { id });
+      const record = await rpc<Submission | null>("get", { id });
       if (record) return await cover(record);
       throw new RequestError(404, "La carátula no está disponible.");
     }
     if (action === "play" && ["GET", "HEAD"].includes(request.method)) {
-      const record = await rpc<Video | null>("get", { id });
+      const record = await rpc<Submission | null>("get", { id });
       if (!record) throw new RequestError(404, "El video no está disponible.");
       return await play(request, record, url.searchParams.get("ticket") || "");
     }
@@ -401,7 +427,7 @@ Deno.serve(async request => {
     if (["preview", "decide"].includes(action) && request.method === "POST") {
       await requireMember(actor, true);
       if (action === "decide") return await decide(request, id, actor);
-      const record = await rpc<Video | null>("get", { id });
+      const record = await rpc<Submission | null>("get", { id });
       if (record) return await previewTicket(record, actor);
     }
     throw new RequestError(404, "Ruta no disponible.");

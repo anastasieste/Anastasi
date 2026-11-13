@@ -1,43 +1,9 @@
 import { account, formMessage } from './account.js?v=1.10';
+import { uploadContent, reviewOutro } from './content-transfer.js?v=1.14';
 import { captureVideoCover } from './video-cover.js';
 import { defaultAfter, defaultBefore, formatTime, maxSourceDuration, mergedRanges, parseTime, validEvent } from './video-timeline.js';
 
 const byId = id => document.getElementById(id);
-const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-
-async function upload(blob, title, state, onProgress) {
-  if (!state.id) Object.assign(state, await account.videoStart(title, blob.size, state.cover));
-  let result = { received: state.received || 0 };
-  let attempts = 0;
-  while (!result.submitted) {
-    const offset = result.received;
-    try {
-      result = offset < blob.size
-        ? await account.videoChunk(state.id, blob.slice(offset, offset + state.chunkSize), offset)
-        : await account.videoOffset(state.id);
-      if (!result.submitted && (!Number.isInteger(result.received) || result.received <= offset || result.received > blob.size)) {
-        throw new Error('La subida no avanzó.');
-      }
-      attempts = 0;
-    } catch (error) {
-      if (error.status && error.status < 500 && error.status !== 429) {
-        if (error.status === 410) { delete state.id; delete state.received; }
-        throw error;
-      }
-      if (++attempts > 3) throw error;
-      await pause(700 * attempts);
-      try {
-        const status = await account.videoOffset(state.id);
-        if (status.submitted || (Number.isInteger(status.received) && status.received >= 0 && status.received <= blob.size)) result = status;
-      } catch (failure) {
-        if (failure.status === 410) { delete state.id; delete state.received; throw failure; }
-      }
-    }
-    state.received = result.received;
-    onProgress(Math.floor(result.received * 100 / blob.size));
-  }
-}
-
 export function setupEditor(profile) {
   const player = byId('editor-player');
   const fileInput = byId('video-file');
@@ -251,8 +217,8 @@ export function setupEditor(profile) {
         if (send) {
           cached = undefined;
           message('Cargando el cierre de Anástasi…');
-          outro = await account.videoOutro();
-          if (outro.type !== 'video/mp4' || !outro.size) throw new Error('El video de cierre no está disponible. Intenta nuevamente.');
+          outro = await reviewOutro();
+
         }
         message('Preparando video…');
         const { renderVideo } = await import('./video-render.js?v=1.10');
@@ -272,7 +238,7 @@ export function setupEditor(profile) {
         progress.value = 0;
         progress.hidden = false;
         message('Subiendo video…');
-        await upload(reviewVideo, montageTitle, transfer, percent => {
+        await uploadContent(reviewVideo, montageTitle, transfer, percent => {
           progress.value = percent;
           message('Subiendo video… ' + percent + ' %');
         });
