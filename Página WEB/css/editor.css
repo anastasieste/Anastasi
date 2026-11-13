@@ -32,6 +32,25 @@
 .video-notice form { margin-top: 14px; }
 .video-notice .video-notice-checkbox { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
 .video-notice .video-notice-checkbox input { width: auto; min-height: auto; }
+
+.content-upload:not([hidden]) { display: grid; gap: 18px; max-width: 680px; }
+.content-drop {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: clamp(16px, 4vw, 32px);
+  text-align: center;
+  border: 1px dashed var(--accent-line);
+  background: var(--black);
+}
+.content-drop.is-dragging { border-color: var(--terracotta-light); background: var(--surface); }
+.content-drop small { color: var(--muted); }
+.content-selection:not([hidden]) { display: grid; gap: 12px; }
+.content-file-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.content-file-row strong { min-width: 0; overflow-wrap: anywhere; }
+.content-upload .form-message:empty { display: none; }
+.content-upload progress { width: 100%; accent-color: var(--terracotta); }
+.video-review-player[hidden] { display: none; }
 .video-review-list { display: grid; gap: 10px; margin-top: 14px; }
 .video-review-list summary { overflow-wrap: anywhere; }
 .video-review-list .video-actions { margin-top: 10px; }
