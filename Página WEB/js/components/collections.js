@@ -7,26 +7,89 @@ function node(tag, text, className) {
   return element;
 }
 
-export function renderSquads(root, squads, openRoster) {
+export function renderSquads(root, squads, loadMembers, avatarUrl) {
   if (!squads.length) return;
   root.replaceChildren();
   root.classList.add('has-content');
   for (const squad of squads) {
-    const card = node('button', '', 'squad-card');
-    card.type = 'button';
-    card.setAttribute('aria-haspopup', 'dialog');
-    card.setAttribute('aria-controls', 'squad-roster-dialog');
+    const card = node('article', '', 'squad-card');
+    const toggle = node('button', '', 'squad-card-toggle');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', 'false');
+    const label = node('span');
     if (squad.badge || squad.photo) {
       const img = node('img');
       img.src = squad.badge || squad.photo;
       img.alt = `Insignia o fotografía de ${squad.name}`;
       img.loading = 'lazy';
-      card.append(img);
+      label.append(img);
     }
-    card.append(node('span', squad.name || squad.code, 'squad-card-name'), node('span', squad.description, 'squad-card-count'));
-    card.addEventListener('click', () => openRoster(squad));
+    label.append(node('span', squad.name || squad.code, 'squad-card-name'), node('span', squad.description, 'squad-card-count'));
+    toggle.append(label);
+    const roster = node('div', '', 'squad-roster');
+    roster.id = `squad-roster-${squad.code}`;
+    roster.inert = true;
+    roster.setAttribute('aria-hidden', 'true');
+    toggle.setAttribute('aria-controls', roster.id);
+    const body = node('div', '', 'squad-roster-body');
+    const status = node('p', '', 'squad-roster-status');
+    status.setAttribute('role', 'status');
+    const loading = node('span', '', 'sr-only');
+    loading.setAttribute('role', 'status');
+    const list = node('ul', '', 'squad-roster-list');
+    list.setAttribute('role', 'list');
+    list.setAttribute('aria-label', `Integrantes de ${squad.name || squad.code}`);
+    body.append(status, list);
+    roster.append(body);
+    card.append(toggle, loading, roster);
+    let request = 0;
+    toggle.addEventListener('click', async () => {
+      const current = ++request;
+      const open = roster.inert;
+      toggle.setAttribute('aria-expanded', String(open));
+      roster.inert = !open;
+      roster.setAttribute('aria-hidden', String(!open));
+      loading.textContent = open ? 'Cargando integrantes…' : '';
+      toggle.toggleAttribute('data-loading', open);
+      if (!open) return;
+
+      roster.removeAttribute('data-ready');
+      list.replaceChildren();
+      status.textContent = '';
+      try {
+        const members = await loadMembers(squad.code);
+        if (current !== request) return;
+        list.replaceChildren(...members.map(member => rosterMember(member, squad.code, avatarUrl)));
+        status.textContent = members.length ? '' : 'Este escuadrón no tiene integrantes activos.';
+      } catch {
+        if (current === request) status.textContent = 'No se pudo cargar la lista. Intenta de nuevo.';
+      } finally {
+        if (current === request) {
+          toggle.removeAttribute('data-loading');
+          loading.textContent = '';
+          roster.setAttribute('data-ready', '');
+        }
+      }
+    });
     root.append(card);
   }
+}
+
+function rosterMember(member, squad, avatarUrl) {
+  const row = node('li', '', 'squad-roster-member');
+  if (member.has_avatar) {
+    const avatar = node('span', '', 'avatar');
+    const picture = document.createElement('img');
+    picture.alt = '';
+    picture.loading = 'lazy';
+    picture.decoding = 'async';
+    picture.addEventListener('error', () => avatar.remove(), { once: true });
+    picture.src = avatarUrl(squad, member.callsign);
+    avatar.append(picture);
+    row.append(avatar);
+  }
+  row.append(node('strong', member.callsign));
+  return row;
 }
 
 function setupDialogControls(dialog) {
@@ -36,51 +99,6 @@ function setupDialogControls(dialog) {
     const bounds = dialog.getBoundingClientRect();
     if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
   });
-}
-
-export function setupSquadRoster(dialog, loadMembers, avatarUrl) {
-  const heading = dialog.querySelector('h2');
-  const status = dialog.querySelector('[role="status"]');
-  const list = dialog.querySelector('ul');
-  let request = 0;
-
-  setupDialogControls(dialog);
-  dialog.addEventListener('close', () => { if (!dialog.open) list.replaceChildren(); });
-
-  return async squad => {
-    const current = ++request;
-    heading.textContent = squad.name || squad.code;
-    list.replaceChildren();
-    list.setAttribute('aria-busy', 'true');
-    status.textContent = 'Cargando integrantes…';
-    dialog.showModal();
-    try {
-      const members = await loadMembers(squad.code);
-      if (current !== request || !dialog.open) return;
-      const entries = members.map(member => {
-        const row = node('li', '', 'squad-roster-member');
-        if (member.has_avatar) {
-          const avatar = node('span', '', 'avatar');
-          const picture = document.createElement('img');
-          picture.alt = '';
-          picture.loading = 'lazy';
-          picture.decoding = 'async';
-          picture.addEventListener('error', () => avatar.remove(), { once: true });
-          picture.src = avatarUrl(squad.code, member.callsign);
-          avatar.append(picture);
-          row.append(avatar);
-        }
-        row.append(node('strong', member.callsign));
-        return row;
-      });
-      list.replaceChildren(...entries);
-      status.textContent = members.length ? '' : 'Este escuadrón no tiene integrantes activos.';
-    } catch {
-      if (current === request && dialog.open) status.textContent = 'No se pudo cargar la lista. Intenta de nuevo.';
-    } finally {
-      if (current === request) list.setAttribute('aria-busy', 'false');
-    }
-  };
 }
 
 export function setupGallery(items) {

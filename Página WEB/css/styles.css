@@ -221,7 +221,6 @@ button:disabled { cursor: default; opacity: .4; }
   aspect-ratio: 2;
   overflow: hidden;
   background: var(--background);
-  border: 1px solid var(--accent-line);
 }
 
 .slide-frame img {
@@ -241,7 +240,7 @@ button:disabled { cursor: default; opacity: .4; }
   pointer-events: none;
 }
 
-.reflection .slide-frame { transform: scaleY(-1); border-color: transparent; }
+.reflection .slide-frame { transform: scaleY(-1); }
 
 .slide-select {
   position: absolute;
@@ -446,7 +445,7 @@ button:disabled { cursor: default; opacity: .4; }
   gap: 20px;
 }
 
-.squad-list.has-content { padding-top: 28px; }
+.squad-list.has-content { align-items: start; padding-top: 28px; }
 
 .media-card, .squad-card {
   min-width: 0;
@@ -460,11 +459,59 @@ button:disabled { cursor: default; opacity: .4; }
 .media-card img { width: 100%; height: auto; aspect-ratio: 2; object-fit: cover; }
 .media-card-video img { aspect-ratio: 16 / 9; background: var(--black); object-fit: contain; }
 .media-card h3 { margin: 15px 18px; font-size: 17px; font-weight: 500; }
-.squad-card { padding: 22px; transition: box-shadow .2s, border-color .2s; }
-.squad-card img { width: auto; max-height: 190px; object-fit: contain; }
+.squad-card { transition: box-shadow .2s; }
+.squad-card-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.squad-card-toggle:focus-visible { outline-offset: -5px; }
+.squad-card-toggle::after {
+  content: '';
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-right: 1.5px solid var(--terracotta-light);
+  border-bottom: 1.5px solid var(--terracotta-light);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform .28s var(--ease);
+}
+.squad-card-toggle[aria-expanded="true"]::after { transform: translateY(2px) rotate(225deg); }
+.squad-card-toggle[data-loading] { cursor: progress; }
+.squad-card-toggle img { width: auto; max-height: 190px; object-fit: contain; }
 .squad-card-name { display: block; margin-bottom: 6px; font-size: 24px; font-weight: 700; color: var(--text); }
-.squad-card:hover, .squad-card:focus-visible { box-shadow: inset 3px 0 var(--terracotta); }
+.squad-card:is(:hover, :focus-within, :has(.squad-card-toggle[aria-expanded="true"])) { box-shadow: inset 3px 0 var(--terracotta); }
 .squad-card-count { color: var(--muted); font-size: 14px; }
+.squad-roster {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows .32s var(--ease), opacity .24s ease;
+}
+.squad-roster[data-ready]:not([inert]) { grid-template-rows: 1fr; opacity: 1; }
+.squad-roster-body { min-height: 0; overflow: hidden; }
+.squad-roster-status, .squad-roster-list { margin: 0 22px 18px; border-top: 1px solid var(--accent-line); }
+.squad-roster-status { padding-top: 12px; color: var(--muted); font-size: 14px; }
+.squad-roster-status:empty, .squad-roster-list:empty { display: none; }
+.squad-roster-list { padding: 0; list-style: none; }
+.squad-roster-member {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.squad-roster-member .avatar { width: 34px; }
+.squad-roster-member strong { grid-column: 2; overflow-wrap: anywhere; font-size: 15px; font-weight: 600; }
 
 .footer {
   border-top: 1px solid var(--accent-line);
@@ -512,32 +559,6 @@ dialog::backdrop { background: #000c; }
 .portal-dialog { width: min(500px, 92vw); }
 .portal-dialog h2 { margin-block: 10px; font-size: clamp(26px, 5vw, 42px); font-weight: 500; letter-spacing: -.045em; }
 .portal-dialog p:last-child { color: var(--muted); }
-.squad-roster-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.squad-roster-heading h2 { margin: 0; overflow-wrap: anywhere; }
-.squad-roster-heading .dialog-close { flex-shrink: 0; margin: 0; }
-.squad-roster-status { color: var(--muted); }
-.squad-roster-status:empty, .squad-roster-list:empty { display: none; }
-.squad-roster-list {
-  max-height: min(54dvh, 26rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--accent-line);
-  list-style: none;
-}
-.squad-roster-member {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  min-height: 54px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-}
-.squad-roster-member .avatar { width: 34px; }
-.squad-roster-member strong { grid-column: 2; overflow-wrap: anywhere; font-size: 15px; font-weight: 600; }
 
 @media (max-width: 900px) {
   .header { padding-inline: 24px; }
@@ -651,6 +672,10 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 }
 
 .account-form input:focus, .account-form select:focus { border-color: var(--terracotta-light); }
+.portal-dialog .account-form input:focus-visible { outline: 0; }
+@media (forced-colors: active) {
+  .portal-dialog .account-form input:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+}
 
 .account-submit {
   min-height: 44px;
