@@ -130,7 +130,8 @@ button:disabled { cursor: default; opacity: .4; }
 }
 
 .members-link span, .text-link span { color: var(--terracotta-light); }
-.members-link:hover { border-color: var(--terracotta-light); }
+.members-link:is(:hover, :focus-visible), .menu-toggle:focus-visible { border-color: var(--terracotta-light); }
+.members-link:focus-visible, .menu-toggle:focus-visible { outline: 0; }
 .menu-toggle { display: none; }
 
 .hero { overflow: hidden; }
@@ -674,6 +675,7 @@ dialog[open]::backdrop { animation: backdrop-enter .24s ease-out both; }
 .account-form input:focus, .account-form select:focus { border-color: var(--terracotta-light); }
 .portal-dialog .account-form input:focus-visible { outline: 0; }
 @media (forced-colors: active) {
+  .members-link:focus-visible, .menu-toggle:focus-visible,
   .portal-dialog .account-form input:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
 }
 
