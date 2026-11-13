@@ -1,9 +1,9 @@
 import { carouselSettings, squadCodes, galleryItems } from './data/content.js?v=1.8';
 import { accountConfig } from './data/account-config.js';
 import { CinematicCarousel } from './components/carousel.js?v=1.9';
-import { renderSquads, setupGallery } from './components/collections.js?v=1.12';
-import { account, formMessage, initializeAccountForms, publicSquadAvatar, submitAccountForm, videoCover, videoPlayback, watchMemberSession } from './account.js?v=1.11';
-import { setupMemberMenu } from './member-menu.js';
+import { renderSquads, setupGallery } from './components/collections.js?v=1.14';
+import { account, formMessage, initializeAccountForms, publicSquadAvatar, submitAccountForm, videoCover, videoPlayback, watchMemberSession } from './account.js?v=1.14';
+import { setupMemberMenu } from './member-menu.js?v=1.14';
 import { setupSiteNavigation } from './site-navigation.js';
 
 const photoFeed = `${accountConfig.url}/functions/v1/site-photos`;
@@ -46,15 +46,17 @@ account.squadCounts().then(counts => {
   });
   renderSquads(document.querySelector('#squad-list'), squads, account.publicSquadRoster, publicSquadAvatar);
 }).catch(() => {});
-const showPublishedVideos = setupGallery(galleryItems);
+const showPublishedContent = setupGallery(galleryItems);
 let galleryVersion = 0;
 async function refreshGallery() {
   const version = ++galleryVersion;
-  const items = await account.publicVideos().catch(() => []);
+  const [videos, photos] = await Promise.all([account.publicVideos().catch(() => []), account.publicPhotos().catch(() => [])]);
   if (version !== galleryVersion) return;
-  showPublishedVideos(items.map(item => ({
+  const publishedVideos = videos.map(item => ({
     type: 'video', title: item.title, src: videoPlayback(item.id), thumbnail: item.has_cover ? videoCover(item.id) : null,
-  })));
+  }));
+  const publishedPhotos = photos.map(item => ({ type: 'photo', alt: 'Foto de Anástasi', src: videoPlayback(item.id) }));
+  showPublishedContent([...publishedVideos, ...publishedPhotos]);
 }
 refreshGallery();
 window.addEventListener('hashchange', () => { if (location.hash === '#galeria') refreshGallery(); });

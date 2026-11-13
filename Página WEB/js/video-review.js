@@ -1,4 +1,4 @@
-import { account, videoPlayback } from './account.js?v=1.7';
+import { account, videoPlayback } from './account.js?v=1.14';
 
 export function setupVideoReview() {
   const list = document.querySelector('#admin-video-list');
@@ -44,16 +44,21 @@ export function setupVideoReview() {
     return element;
   }
   function row(record) {
+    const isPhoto = record.mime_type?.startsWith('image/');
+    const kind = isPhoto ? 'foto' : 'video';
     const details = create('details', '', 'admin-member');
     const summary = create('summary');
-    summary.append(create('strong', record.title), create('span', ' · ' + record.callsign + ' · ' + date.format(new Date(record.submitted_at))));
-    const player = create('video', '', 'video-review-player');
+    summary.append(create('strong', record.title), create('span', ' · ' + (isPhoto ? 'Foto' : 'Video') + ' · ' + record.callsign + ' · ' + date.format(new Date(record.submitted_at))));
+    const player = create(isPhoto ? 'img' : 'video', '', 'video-review-player');
     player.hidden = true;
-    player.controls = true;
-    player.playsInline = true;
-    player.preload = 'metadata';
+    if (isPhoto) player.alt = 'Foto enviada a revisión';
+    else {
+      player.controls = true;
+      player.playsInline = true;
+      player.preload = 'metadata';
+    }
     const actions = create('div', '', 'video-actions');
-    const view = create('button', 'Cargar video', 'account-submit');
+    const view = create('button', 'Cargar ' + kind, 'account-submit');
     const approve = create('button', 'Aprobar', 'account-submit');
     const reject = create('button', 'Rechazar', 'account-submit');
     view.type = approve.type = reject.type = 'button';
@@ -61,7 +66,7 @@ export function setupVideoReview() {
     message.setAttribute('role', 'status');
     view.addEventListener('click', async () => {
       view.disabled = true;
-      message.textContent = 'Cargando video…';
+      message.textContent = `Cargando ${kind}…`;
       try {
         const { ticket } = await account.videoPreview(record.id);
         if (!details.isConnected || !details.open) return;
@@ -72,9 +77,9 @@ export function setupVideoReview() {
       finally { view.disabled = false; }
     });
     player.addEventListener('error', () => {
-      if (player.hasAttribute('src')) message.textContent = 'Pulsa Cargar video para renovar el acceso.';
+      if (player.hasAttribute('src')) message.textContent = `Pulsa Cargar ${kind} para renovar el acceso.`;
     });
-    details.addEventListener('toggle', () => { if (!details.open) player.pause(); });
+    if (!isPhoto) details.addEventListener('toggle', () => { if (!details.open) player.pause(); });
     function updateDecisionButtons(busy) {
       approve.disabled = busy || record.decision === 'rejected';
       reject.disabled = busy || record.decision === 'approved';
@@ -84,7 +89,7 @@ export function setupVideoReview() {
       button.addEventListener('click', () => {
         confirmation.returnValue = '';
         const label = button.textContent;
-        confirmation.querySelector('h2').textContent = label + ' video';
+        confirmation.querySelector('h2').textContent = label + ' ' + kind;
         confirmation.querySelector('p').textContent = record.title;
         confirmation.querySelector('#video-decision-confirm').textContent = label;
         confirmDecision = async () => {
@@ -93,7 +98,9 @@ export function setupVideoReview() {
           message.textContent = 'Guardando decisión…';
           try {
             await account.videoDecision(record.id, decision);
-            if (enabled && !panel.hidden) await load(decision === 'approved' ? 'Video aprobado y publicado.' : 'Video rechazado.');
+            if (enabled && !panel.hidden) await load(decision === 'approved'
+              ? (isPhoto ? 'Foto aprobada y publicada.' : 'Video aprobado y publicado.')
+              : (isPhoto ? 'Foto rechazada.' : 'Video rechazado.'));
           } catch (error) {
             message.textContent = error.message;
           } finally { updateDecisionButtons(false); }
@@ -107,13 +114,13 @@ export function setupVideoReview() {
   }
   async function load(feedback = '') {
     const current = ++version;
-    status.textContent = 'Cargando videos…';
+    status.textContent = 'Cargando contenido…';
     try {
-      const records = await account.videoQueue();
+      const records = await account.contentQueue();
       if (current !== version || !enabled || panel.hidden) return;
       clearPlayback();
       list.replaceChildren(...records.map(row));
-      status.textContent = [feedback, records.length ? '' : 'No hay videos pendientes.'].filter(Boolean).join(' ');
+      status.textContent = [feedback, records.length ? '' : 'No hay contenido pendiente.'].filter(Boolean).join(' ');
     } catch (error) { if (current === version) status.textContent = error.message; }
   }
   tabs.forEach(button => button.addEventListener('click', () => { if (enabled) select(button.dataset.adminSection === 'videos'); }));

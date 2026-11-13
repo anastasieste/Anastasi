@@ -1,5 +1,5 @@
-import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, videoPlayback, watchMemberSession } from './account.js?v=1.11';
-import { setupMemberMenu } from './member-menu.js';
+import { account, accountsReady, formMessage, initializeAccountForms, submitAccountForm, validPassword, videoPlayback, watchMemberSession } from './account.js?v=1.14';
+import { setupMemberMenu } from './member-menu.js?v=1.14';
 import { setupSiteNavigation } from './site-navigation.js';
 import { galleryItems } from './data/content.js?v=1.2';
 
@@ -355,8 +355,9 @@ async function start() {
         status.textContent = 'El Editor requiere una membresía activa.';
         return;
       }
-      (await import('./editor.js?v=1.10')).setupEditor(profile);
+      (await import('./editor.js?v=1.14')).setupEditor(profile);
     }
+    if (page === 'upload') (await import('./content-upload.js?v=1.14')).setupContentUpload();
     if (page === 'profile') {
       if (id === null) await renderOwnProfile();
       else await renderDirectoryProfile(id);
