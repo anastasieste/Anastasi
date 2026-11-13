@@ -357,7 +357,7 @@ async function start() {
       }
       (await import('./editor.js?v=1.14')).setupEditor(profile);
     }
-    if (page === 'upload') (await import('./content-upload.js?v=1.14')).setupContentUpload();
+    if (page === 'upload') (await import('./content-upload.js?v=1.15')).setupContentUpload();
     if (page === 'profile') {
       if (id === null) await renderOwnProfile();
       else await renderDirectoryProfile(id);

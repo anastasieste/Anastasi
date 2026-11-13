@@ -1,7 +1,8 @@
 import { account } from './account.js?v=1.14';
 import { reviewOutro, uploadContent } from './content-transfer.js?v=1.14';
 import { captureVideoCover } from './video-cover.js';
-import { maxSourceDuration } from './video-timeline.js';
+
+const maxVideoDuration = 120;
 
 const types = new Map([
   ['mp4', 'video/mp4'], ['mov', 'video/quicktime'], ['webm', 'video/webm'],
@@ -71,9 +72,9 @@ export function setupContentUpload() {
 
   function previewReady(player) {
     if (!selection || player.src !== sourceUrl || selection.isVideo !== (player === video)) return;
-    if (player === video && (!Number.isFinite(video.duration) || !video.videoHeight || video.duration * 1000 > maxSourceDuration)) {
+    if (player === video && (!Number.isFinite(video.duration) || !video.videoHeight || video.duration > maxVideoDuration)) {
       clear();
-      message('Selecciona un video de hasta 20 minutos que se pueda reproducir en tu navegador.', true);
+      message('Selecciona un video de hasta 2 minutos que se pueda reproducir en tu navegador.', true);
       return;
     }
     selection.ready = true;
